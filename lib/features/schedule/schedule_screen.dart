@@ -36,7 +36,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  // Helper to get start of the week (Monday)
   DateTime _getStartOfWeek(DateTime date) {
     return date.subtract(Duration(days: date.weekday - 1));
   }
@@ -48,6 +47,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final canEdit = userRole == 'admin' || userRole == 'faculty';
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       floatingActionButton: canEdit
           ? FloatingActionButton.extended(
               backgroundColor: AppColors.primary,
@@ -61,17 +61,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           : null,
       body: CustomScrollView(
         slivers: [
-          // 1. Modern Header with Actions
+          // 1. Modern Header
           SliverAppBar(
-            expandedHeight: 140.0,
+            expandedHeight: 120.0,
             pinned: true,
             backgroundColor: AppColors.background,
             flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
               title: Text(
                 _isWeekView ? "Weekly Overview" : "Daily Schedule",
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  shadows: [Shadow(color: Colors.black45, blurRadius: 5)],
                 ),
               ),
               background: Stack(
@@ -88,7 +91,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(0.9),
+                          AppColors.background.withOpacity(0.95),
                         ],
                       ),
                     ),
@@ -97,28 +100,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ),
             ),
             actions: [
-              // Toggle View Button
               IconButton(
                 icon: Icon(
-                  _isWeekView ? Icons.view_agenda : Icons.calendar_view_week,
+                  _isWeekView
+                      ? Icons.view_agenda_outlined
+                      : Icons.calendar_view_week_outlined,
+                  color: Colors.white,
                 ),
                 tooltip: _isWeekView
                     ? "Switch to Day View"
                     : "Switch to Week View",
-                onPressed: () {
-                  setState(() => _isWeekView = !_isWeekView);
-                },
+                onPressed: () => setState(() => _isWeekView = !_isWeekView),
               ),
-              // AI Button (Admin Only)
               if (canEdit)
                 IconButton(
-                  icon: const Icon(Icons.auto_awesome),
+                  icon: const Icon(
+                    Icons.auto_awesome_outlined,
+                    color: Colors.white,
+                  ),
                   tooltip: "AI Auto-Schedule",
                   onPressed: () => _handleGenerateTimetable(context),
                 ),
-              // More Actions Menu
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
+                icon: const Icon(Icons.more_vert, color: Colors.white),
                 onSelected: (value) => _showPlaceholder(value),
                 itemBuilder: (context) => [
                   const PopupMenuItem(
@@ -135,36 +139,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
-                    value: "Book Room",
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.meeting_room,
-                          size: 20,
-                          color: AppColors.textMedium,
-                        ),
-                        SizedBox(width: 12),
-                        Text("Book Room"),
-                      ],
-                    ),
-                  ),
                   if (canEdit) ...[
                     const PopupMenuDivider(),
-                    const PopupMenuItem(
-                      value: "Check Conflicts",
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.fact_check,
-                            size: 20,
-                            color: AppColors.textMedium,
-                          ),
-                          SizedBox(width: 12),
-                          Text("Check Conflicts"),
-                        ],
-                      ),
-                    ),
                     const PopupMenuItem(
                       value: "Publish Schedule",
                       child: Row(
@@ -185,22 +161,20 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             ],
           ),
 
-          // 2. Date Strip (Only visible in Day View)
+          // 2. Date Strip (Day View Only)
           if (!_isWeekView)
             SliverToBoxAdapter(
-              child: Container(
-                color: AppColors.background,
-                padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
                 child: _buildDateStrip(),
               ),
             ),
 
-          // 3. Loading State
+          // 3. Content
           if (schedule.isLoading)
             const SliverFillRemaining(
               child: Center(child: CircularProgressIndicator()),
             )
-          // 4. Content (Day vs Week)
           else if (_isWeekView)
             _buildWeekView(schedule)
           else
@@ -218,18 +192,226 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     if (sessions.isEmpty) {
       return SliverFillRemaining(
         hasScrollBody: false,
-        child: _buildEmptyState("No classes scheduled for today."),
+        child: _buildEmptyState("No classes scheduled."),
       );
     }
 
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
-          return _buildSessionCard(sessions[index]);
+          final session = sessions[index];
+          // Determine if this is the last item to handle the timeline line
+          final isLast = index == sessions.length - 1;
+          return _buildTimelineSessionItem(session, isLast);
         }, childCount: sessions.length),
       ),
     );
+  }
+
+  // --- NEW: Enhanced Timeline Session Item ---
+  Widget _buildTimelineSessionItem(ClassSession session, bool isLast) {
+    // Determine color based on session type
+    Color typeColor = Colors.blueAccent;
+    if (session.type.toLowerCase().contains("lab"))
+      typeColor = Colors.purpleAccent;
+    if (session.type.toLowerCase().contains("exam"))
+      typeColor = Colors.redAccent;
+    if (session.type.toLowerCase().contains("seminar"))
+      typeColor = Colors.orangeAccent;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 1. Time Column
+          SizedBox(
+            width: 55,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  session.startTimeStr,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: AppColors.textHigh,
+                  ),
+                ),
+                Text(
+                  session.endTimeStr,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textDisabled,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 2. Timeline Line
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                // Timeline Dot
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    border: Border.all(color: typeColor, width: 3),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: typeColor.withOpacity(0.4),
+                        blurRadius: 6,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+                // Timeline Line (Solid)
+                if (!isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            typeColor.withOpacity(0.5),
+                            typeColor.withOpacity(0.1),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // 3. Card Content
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.hardEdge,
+                child: Stack(
+                  children: [
+                    // Accent Color Strip
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: 4,
+                      child: Container(color: typeColor),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: typeColor.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  session.type.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: typeColor,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.more_horiz,
+                                color: AppColors.textDisabled,
+                                size: 18,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            session.courseName.isNotEmpty
+                                ? session.courseName
+                                : session.courseId,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textHigh,
+                              height: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              _buildInfoTag(Icons.location_on, session.room),
+                              const SizedBox(width: 12),
+                              _buildInfoTag(
+                                Icons.access_time,
+                                _getDurationString(session),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoTag(IconData icon, String label) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: AppColors.textDisabled),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textMedium,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _getDurationString(ClassSession session) {
+    final duration =
+        session.activeEndTime?.difference(session.activeStartTime!).inMinutes ??
+        60;
+    return "${duration}min";
   }
 
   // --- WEEK VIEW WIDGETS ---
@@ -238,98 +420,88 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final startOfWeek = _getStartOfWeek(_selectedDate);
 
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final currentDate = startOfWeek.add(Duration(days: index));
-            final sessions = schedule.getSessionsForDate(currentDate);
-            final isToday =
-                DateFormat.yMd().format(currentDate) ==
-                DateFormat.yMd().format(DateTime.now());
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final currentDate = startOfWeek.add(Duration(days: index));
+          final sessions = schedule.getSessionsForDate(currentDate);
+          final isToday =
+              DateFormat.yMd().format(currentDate) ==
+              DateFormat.yMd().format(DateTime.now());
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Day Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
-                    children: [
-                      Text(
-                        DateFormat('EEEE').format(currentDate),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isToday
-                              ? AppColors.primary
-                              : AppColors.textHigh,
-                        ),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  children: [
+                    Text(
+                      DateFormat('EEEE').format(currentDate),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isToday ? AppColors.primary : AppColors.textHigh,
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      DateFormat('MMM d').format(currentDate),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textMedium,
+                      ),
+                    ),
+                    if (isToday) ...[
                       const SizedBox(width: 8),
-                      Text(
-                        DateFormat('MMM d').format(currentDate),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          color: AppColors.textMedium,
-                        ),
+                      const Icon(
+                        Icons.circle,
+                        size: 8,
+                        color: AppColors.primary,
                       ),
-                      if (isToday)
-                        Container(
-                          margin: const EdgeInsets.only(left: 12),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            "TODAY",
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
                     ],
-                  ),
+                  ],
                 ),
-
-                // Sessions List for that Day
-                if (sessions.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 24),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface.withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.border.withOpacity(0.5),
-                      ),
+              ),
+              if (sessions.isEmpty)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.border.withOpacity(0.5),
                     ),
-                    child: const Text(
-                      "No classes",
-                      style: TextStyle(color: AppColors.textDisabled),
-                    ),
-                  )
-                else
-                  Column(
-                    children: sessions
-                        .map((s) => _buildSessionCard(s))
-                        .toList(),
                   ),
-
-                if (index < 6)
-                  const Divider(color: AppColors.divider, height: 32),
-              ],
-            );
-          },
-          childCount: 7, // 7 days in a week
-        ),
+                  child: const Text(
+                    "No classes",
+                    style: TextStyle(
+                      color: AppColors.textDisabled,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                )
+              else
+                Column(
+                  children: sessions
+                      .map(
+                        (s) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _buildTimelineSessionItem(
+                            s,
+                            true,
+                          ), // Reuse new card, simplified
+                        ),
+                      )
+                      .toList(),
+                ),
+              if (index < 6)
+                const Divider(color: AppColors.divider, height: 32),
+            ],
+          );
+        }, childCount: 7),
       ),
     );
   }
@@ -338,11 +510,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Widget _buildDateStrip() {
     return SizedBox(
-      height: 85,
+      height: 90,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: 14, // Next 2 weeks
+        itemCount: 14,
         itemBuilder: (context, index) {
           final date = DateTime.now().add(Duration(days: index));
           final isSelected =
@@ -354,23 +526,25 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             onTap: () => setState(() => _selectedDate = date),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: 60,
+              curve: Curves.easeOutCubic,
+              width: 64,
               margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.surfaceElevated,
-                borderRadius: BorderRadius.circular(16),
-                border: isSelected ? null : Border.all(color: AppColors.border),
+                color: isSelected ? AppColors.primary : AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.border,
+                  width: 1.5,
+                ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
                           color: AppColors.primary.withOpacity(0.4),
-                          blurRadius: 8,
+                          blurRadius: 12,
                           offset: const Offset(0, 4),
                         ),
                       ]
-                    : null,
+                    : [],
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -381,14 +555,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       color: isSelected ? Colors.white : AppColors.textMedium,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     DateFormat('d').format(date),
                     style: TextStyle(
                       color: isSelected ? Colors.white : AppColors.textHigh,
-                      fontSize: 20,
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -407,166 +582,25 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
               color: AppColors.surfaceElevated,
               shape: BoxShape.circle,
+              border: Border.all(color: AppColors.border),
             ),
             child: const Icon(
-              Icons.event_busy,
+              Icons.calendar_today_outlined,
               size: 48,
               color: AppColors.textDisabled,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Text(
             message,
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: AppColors.textMedium),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSessionCard(ClassSession session) {
-    final duration =
-        session.activeEndTime?.difference(session.activeStartTime!).inMinutes ??
-        60;
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Time Column
-          SizedBox(
-            width: 60,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  session.startTimeStr,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  session.endTimeStr,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textMedium,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Timeline Line
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Column(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    border: Border.all(color: AppColors.primary, width: 2),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                Expanded(child: Container(width: 2, color: AppColors.divider)),
-              ],
-            ),
-          ),
-
-          // Card
-          Expanded(
-            child: Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          session.courseName.isNotEmpty
-                              ? session.courseName
-                              : session.courseId,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textHigh,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          session.type,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        size: 14,
-                        color: AppColors.textMedium,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        session.room,
-                        style: const TextStyle(color: AppColors.textMedium),
-                      ),
-                      const Spacer(),
-                      const Icon(
-                        Icons.access_time,
-                        size: 14,
-                        color: AppColors.textMedium,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        "${duration}min",
-                        style: const TextStyle(color: AppColors.textMedium),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            style: const TextStyle(
+              fontSize: 16,
+              color: AppColors.textMedium,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -579,9 +613,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surfaceElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
           "AI Auto-Scheduler",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         content: const Text(
           "Generate optimal timetable based on faculty availability and room capacity?",
@@ -590,11 +625,19 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text("Cancel"),
+            child: const Text(
+              "Cancel",
+              style: TextStyle(color: AppColors.textMedium),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             child: const Text("Generate"),
           ),
         ],
@@ -612,8 +655,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               success
                   ? "Timetable Generated Successfully!"
                   : "Optimization Failed",
+              style: const TextStyle(color: Colors.white),
             ),
             backgroundColor: success ? Colors.green : Colors.red,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }

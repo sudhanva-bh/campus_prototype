@@ -88,11 +88,11 @@ class _StudentHomeState extends State<StudentHome> {
                 children: [
                   // --- WORKING FEATURES ---
                   _buildSectionHeader("Quick Actions"),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 8), // Reduced gap
                   Row(
                     children: [
                       Expanded(
-                        child: GestureDetector(
+                        child: _BouncingButton(
                           onTap: () {
                             Navigator.push(
                               context,
@@ -111,8 +111,8 @@ class _StudentHomeState extends State<StudentHome> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: GestureDetector(
-                          onTap: () => _showPlaceholder("QR Scan"),
+                        child: _BouncingButton(
+                          onTap: () => _showPlaceholder("QR Scan Entry"),
                           child: _buildActionBtn(
                             Icons.qr_code_scanner,
                             "Scan Entry",
@@ -124,7 +124,7 @@ class _StudentHomeState extends State<StudentHome> {
                     ],
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   _buildSectionHeader("Enrolled Courses"),
                   Consumer<CourseProvider>(
                     builder: (context, provider, _) {
@@ -141,64 +141,71 @@ class _StudentHomeState extends State<StudentHome> {
                       }
                       return Column(
                         children: provider.courses
-                            .map((course) => _buildCourseCard(course))
+                            .map(
+                              (course) => _BouncingButton(
+                                onTap: () {
+                                  _showPlaceholder(
+                                    "Course Details for ${course.code}",
+                                  );
+                                },
+                                child: _buildCourseCard(course),
+                              ),
+                            )
                             .toList(),
                       );
                     },
                   ),
 
-                  // --- DUMMY FEATURES (MVP) ---
+                  // --- DUMMY FEATURES (Based on MVP Document) ---
                   const SizedBox(height: 12),
                   const Divider(color: AppColors.divider),
                   const SizedBox(height: 16),
 
-                  _buildSectionHeader("Course Registration"),
+                  _buildSectionHeader("Academic Registration"),
                   _buildGridMenu([
                     _MenuOption("Search Catalog", Icons.search),
-                    _MenuOption("My Waitlists", Icons.hourglass_empty),
-                    _MenuOption(
-                      "Prerequisites",
-                      Icons.rule,
-                    ), // Prerequisite Validation
-                    _MenuOption("Cart", Icons.shopping_cart_outlined),
+                    _MenuOption("Waitlists", Icons.hourglass_empty),
+                    _MenuOption("Prerequisites", Icons.rule),
+                    _MenuOption("Cart / Enroll", Icons.shopping_cart_outlined),
+                  ]),
+
+                  const SizedBox(height: 24),
+
+                  _buildSectionHeader("Learning Management"),
+                  _buildGridMenu([
+                    _MenuOption("Assignments", Icons.upload_file),
+                    _MenuOption("Course Materials", Icons.library_books),
+                    _MenuOption("Discussions", Icons.forum_outlined),
+                    _MenuOption("Grades & Rubrics", Icons.grade),
+                  ]),
+
+                  const SizedBox(height: 24),
+
+                  _buildSectionHeader("Examinations"),
+                  _buildGridMenu([
+                    _MenuOption("Exam Schedule", Icons.calendar_month),
+                    _MenuOption("Seating Plan", Icons.event_seat),
+                    _MenuOption("Hall Ticket", Icons.badge),
+                    _MenuOption("Results", Icons.emoji_events),
                   ]),
 
                   const SizedBox(height: 24),
 
                   _buildSectionHeader("Financial Services"),
                   _buildGridMenu([
-                    _MenuOption("Fee Payment", Icons.payment),
-                    _MenuOption(
-                      "Scholarships",
-                      Icons.school,
-                    ), // Scholarship Management
-                    _MenuOption(
-                      "Request Refund",
-                      Icons.money_off,
-                    ), // Refund Processing
-                    _MenuOption(
-                      "Installments",
-                      Icons.calendar_month,
-                    ), // Installment Plans
-                  ]),
-
-                  const SizedBox(height: 24),
-
-                  _buildSectionHeader("Academic Records"),
-                  _buildGridMenu([
-                    _MenuOption("Exam Results", Icons.pie_chart_outline),
-                    _MenuOption("Transcripts", Icons.description_outlined),
-                    _MenuOption("Library", Icons.menu_book),
-                    _MenuOption("Certificates", Icons.workspace_premium),
+                    _MenuOption("Pay Fees", Icons.payment),
+                    _MenuOption("Scholarships", Icons.school),
+                    _MenuOption("Request Refund", Icons.money_off),
+                    _MenuOption("Installment Plans", Icons.calendar_view_day),
                   ]),
 
                   const SizedBox(height: 24),
                   _buildSectionHeader("Campus Life"),
                   _buildGridMenu([
-                    _MenuOption("Events", Icons.event),
+                    _MenuOption("Events Calendar", Icons.event),
                     _MenuOption("Bus Tracking", Icons.directions_bus),
                     _MenuOption("Cafeteria", Icons.fastfood_outlined),
-                    _MenuOption("Clubs", Icons.groups_outlined),
+                    _MenuOption("Clubs & Groups", Icons.groups_outlined),
                   ]),
 
                   const SizedBox(height: 40),
@@ -211,9 +218,10 @@ class _StudentHomeState extends State<StudentHome> {
     );
   }
 
+  // Updated Spacing
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 0),
+      padding: const EdgeInsets.only(bottom: 8), // Reduced from 12
       child: Text(
         title,
         style: const TextStyle(
@@ -355,29 +363,32 @@ class _StudentHomeState extends State<StudentHome> {
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 1.5,
+        childAspectRatio: 2.2,
       ),
       itemBuilder: (context, index) {
         final opt = options[index];
-        return InkWell(
+        return _BouncingButton(
           onTap: () => _showPlaceholder(opt.title),
-          borderRadius: BorderRadius.circular(12),
           child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.border),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            child: Row(
               children: [
-                Icon(opt.icon, color: AppColors.primaryLight, size: 28),
-                const SizedBox(height: 8),
-                Text(
-                  opt.title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textHigh,
+                Icon(opt.icon, color: AppColors.primaryLight, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    opt.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textHigh,
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.fade,
                   ),
                 ),
               ],
@@ -393,4 +404,53 @@ class _MenuOption {
   final String title;
   final IconData icon;
   _MenuOption(this.title, this.icon);
+}
+
+// NEW: Tap Animation Widget
+class _BouncingButton extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const _BouncingButton({required this.child, required this.onTap});
+
+  @override
+  State<_BouncingButton> createState() => _BouncingButtonState();
+}
+
+class _BouncingButtonState extends State<_BouncingButton>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => _controller.forward(),
+      onTapUp: (_) {
+        _controller.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _controller.reverse(),
+      child: ScaleTransition(scale: _scaleAnimation, child: widget.child),
+    );
+  }
 }
