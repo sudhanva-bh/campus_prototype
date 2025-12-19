@@ -1,8 +1,8 @@
+import 'package:campus_gemini_2/features/schedule/schedule_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../providers/auth_provider.dart';
-import '../../core/constants/app_colors.dart';
 import 'role_views/student_home.dart';
 import 'role_views/faculty_home.dart';
 import 'role_views/admin_home.dart';
@@ -46,6 +46,9 @@ class _MainWrapperState extends State<MainWrapper> {
         default:
           bodyContent = const Center(child: Text("Unknown Role"));
       }
+    } else if (_currentIndex == 1) {
+      // SCHEDULE TAB: Index 1
+      bodyContent = const ScheduleScreen(); // Replaces placeholder
     } else if (_currentIndex == 3) {
       // PROFILE TAB: Index 3
       bodyContent = const ProfileScreen();

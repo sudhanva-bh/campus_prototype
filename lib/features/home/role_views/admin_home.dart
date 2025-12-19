@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../providers/course_provider.dart';
 import '../../courses/course_form_screen.dart';
+import '../../schedule/create_session_screen.dart'; // Import this
 
 class AdminHome extends StatelessWidget {
   const AdminHome({super.key});
@@ -23,20 +24,21 @@ class AdminHome extends StatelessWidget {
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CourseFormScreen())),
         ),
         
+        // NEW: Linked to Schedule
+        _buildAdminOption(
+          context,
+          icon: Icons.calendar_month,
+          title: "Schedule Session",
+          subtitle: "Add classes to the master timetable",
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateSessionScreen())),
+        ),
+
         _buildAdminOption(
           context,
           icon: Icons.people_alt,
           title: "Enroll Student",
           subtitle: "Assign students to specific courses",
           onTap: () => _showEnrollDialog(context),
-        ),
-
-        _buildAdminOption(
-          context,
-          icon: Icons.settings,
-          title: "System Settings",
-          subtitle: "Configure global parameters",
-          onTap: () {},
         ),
       ],
     );
@@ -71,9 +73,9 @@ class AdminHome extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: courseIdCtrl, decoration: const InputDecoration(labelText: "Course ID")),
+            TextField(controller: courseIdCtrl, decoration: const InputDecoration(labelText: "Course ID (e.g. demo_..._CS101)")),
             const SizedBox(height: 12),
-            TextField(controller: studentIdCtrl, decoration: const InputDecoration(labelText: "Student ID")),
+            TextField(controller: studentIdCtrl, decoration: const InputDecoration(labelText: "Student ID (Firebase UID)")),
           ],
         ),
         actions: [

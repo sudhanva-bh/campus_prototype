@@ -13,4 +13,8 @@ class ApiConstants {
   static const String coursesEndpoint = "$baseUrl/api/courses";
   static String courseDetailEndpoint(String id) => "$baseUrl/api/courses/$id";
   static String enrollEndpoint(String id) => "$baseUrl/api/courses/$id/enroll";
+
+  // Schedule
+  static const String sessionsEndpoint = "$baseUrl/api/schedule/sessions";
+  static const String generateTimetableEndpoint = "$baseUrl/api/schedule/timetable";
 }
