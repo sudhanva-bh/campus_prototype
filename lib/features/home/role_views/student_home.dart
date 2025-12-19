@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/course_model.dart';
 import '../../../providers/course_provider.dart';
+import '../../attendance/attendance_screen.dart';
 
 class StudentHome extends StatefulWidget {
   const StudentHome({super.key});
@@ -32,14 +34,25 @@ class _StudentHomeState extends State<StudentHome> {
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 16),
-          // Actions
+
+          /// ACTION BUTTONS
           Row(
             children: [
               Expanded(
-                child: _buildActionBtn(
-                  Icons.camera_alt,
-                  "Attendance",
-                  AppColors.primary,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const AttendanceScreen(),
+                      ),
+                    );
+                  },
+                  child: _buildActionBtn(
+                    Icons.camera_alt,
+                    "Attendance",
+                    AppColors.primary,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -52,22 +65,28 @@ class _StudentHomeState extends State<StudentHome> {
               ),
             ],
           ),
+
           const SizedBox(height: 24),
           Text("My Courses", style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
 
-          // Course List
+          /// COURSE LIST
           Consumer<CourseProvider>(
             builder: (context, provider, _) {
-              if (provider.isLoading)
+              if (provider.isLoading) {
                 return const Center(child: CircularProgressIndicator());
-              if (provider.error != null)
+              }
+
+              if (provider.error != null) {
                 return Text(
                   provider.error!,
                   style: const TextStyle(color: Colors.red),
                 );
-              if (provider.courses.isEmpty)
+              }
+
+              if (provider.courses.isEmpty) {
                 return const Text("No courses enrolled.");
+              }
 
               return Column(
                 children: provider.courses
