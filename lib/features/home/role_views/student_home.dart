@@ -23,9 +23,19 @@ class _StudentHomeState extends State<StudentHome> {
     });
   }
 
+  void _showPlaceholder(String featureName) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("$featureName module is coming soon!"),
+        backgroundColor: AppColors.primary,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Get user name from AuthProvider
     final user = context.watch<AuthProvider>().userProfile;
     final firstName = user?['first_name'] ?? 'Student';
 
@@ -33,30 +43,28 @@ class _StudentHomeState extends State<StudentHome> {
       onRefresh: () => context.read<CourseProvider>().fetchCourses(),
       child: CustomScrollView(
         slivers: [
-          // 1. Sliver App Bar with Gradient & Image
+          // 1. Expanded Header
           SliverAppBar(
-            expandedHeight: 200.0,
+            expandedHeight: 180.0,
             pinned: true,
+            backgroundColor: AppColors.background,
             flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
               title: Text(
-                "Welcome, $firstName",
+                "Hello, $firstName",
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  shadows: [Shadow(color: Colors.black45, blurRadius: 2)],
+                  shadows: [Shadow(color: Colors.black, blurRadius: 10)],
                 ),
               ),
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Background Image
                   Image.network(
                     "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1000&auto=format&fit=crop",
                     fit: BoxFit.cover,
-                    errorBuilder: (c, e, s) =>
-                        Container(color: AppColors.surfaceElevated),
                   ),
-                  // Gradient Overlay for readability
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -64,11 +72,10 @@ class _StudentHomeState extends State<StudentHome> {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(0.0),
-                          Colors.black.withOpacity(0.5),
-                          Colors.black.withOpacity(0.8),
+                          Colors.black.withOpacity(0.4),
+                          Colors.black.withOpacity(0.9),
                         ],
-                        stops: const [0.0, 0.6, 0.85, 1.0],
+                        stops: const [0.0, 0.6, 1.0],
                       ),
                     ),
                   ),
@@ -77,20 +84,15 @@ class _StudentHomeState extends State<StudentHome> {
             ),
           ),
 
-          // 2. Main Content
+          // 2. Content
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    "Student Dashboard",
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 16),
-
-                  /// ACTION BUTTONS
+                  // --- WORKING FEATURES ---
+                  _buildSectionHeader("Quick Actions"),
                   Row(
                     children: [
                       Expanded(
@@ -104,48 +106,43 @@ class _StudentHomeState extends State<StudentHome> {
                             );
                           },
                           child: _buildActionBtn(
-                            Icons.camera_alt,
-                            "Attendance",
+                            Icons.camera_alt_outlined,
+                            "Mark Attendance",
                             AppColors.primary,
+                            isDark: false,
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildActionBtn(
-                          Icons.qr_code,
-                          "Scan QR",
-                          AppColors.surfaceElevated,
+                        child: GestureDetector(
+                          onTap: () => _showPlaceholder("QR Scan"),
+                          child: _buildActionBtn(
+                            Icons.qr_code_scanner,
+                            "Scan Entry",
+                            AppColors.surfaceElevated,
+                            isDark: true,
+                          ),
                         ),
                       ),
                     ],
                   ),
 
                   const SizedBox(height: 24),
-                  Text(
-                    "My Courses",
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-
-                  /// COURSE LIST
+                  _buildSectionHeader("Enrolled Courses"),
                   Consumer<CourseProvider>(
                     builder: (context, provider, _) {
                       if (provider.isLoading) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      if (provider.error != null) {
-                        return Text(
-                          provider.error!,
-                          style: const TextStyle(color: Colors.red),
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: CircularProgressIndicator(),
+                          ),
                         );
                       }
-
                       if (provider.courses.isEmpty) {
-                        return const Text("No courses enrolled.");
+                        return _buildEmptyState("No courses enrolled yet.");
                       }
-
                       return Column(
                         children: provider.courses
                             .map((course) => _buildCourseCard(course))
@@ -153,7 +150,30 @@ class _StudentHomeState extends State<StudentHome> {
                       );
                     },
                   ),
-                  const SizedBox(height: 40), // Bottom padding
+
+                  // --- DUMMY FEATURES (MVP) ---
+                  const SizedBox(height: 12),
+                  const Divider(color: AppColors.divider),
+                  const SizedBox(height: 16),
+
+                  _buildSectionHeader("Academic Services"),
+                  _buildGridMenu([
+                    _MenuOption("Exam Results", Icons.pie_chart_outline),
+                    _MenuOption("Fee Payment", Icons.payment),
+                    _MenuOption("Library", Icons.menu_book),
+                    _MenuOption("Transcripts", Icons.description_outlined),
+                  ]),
+
+                  const SizedBox(height: 24),
+                  _buildSectionHeader("Campus Life"),
+                  _buildGridMenu([
+                    _MenuOption("Events", Icons.event),
+                    _MenuOption("Bus Tracking", Icons.directions_bus),
+                    _MenuOption("Cafeteria", Icons.fastfood_outlined),
+                    _MenuOption("Clubs", Icons.groups_outlined),
+                  ]),
+
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -163,42 +183,187 @@ class _StudentHomeState extends State<StudentHome> {
     );
   }
 
-  Widget _buildActionBtn(IconData icon, String label, Color color) {
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          color: AppColors.textHigh,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionBtn(
+    IconData icon,
+    String label,
+    Color color, {
+    required bool isDark,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Icon(icon, color: AppColors.textHigh, size: 28),
+          Icon(
+            icon,
+            color: isDark ? AppColors.textHigh : Colors.white,
+            size: 32,
+          ),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: isDark ? AppColors.textHigh : Colors.white,
+            ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildCourseCard(Course course) {
-    return Card(
-      color: AppColors.surface,
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
       child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: AppColors.primaryVariant,
-          child: Text(
-            course.code.substring(0, 2),
-            style: const TextStyle(color: Colors.white, fontSize: 12),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+          ),
+          child: Center(
+            child: Text(
+              course.code.substring(0, 2).toUpperCase(),
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
         title: Text(
           course.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppColors.textHigh,
+          ),
         ),
-        subtitle: Text("${course.code} • ${course.credits} Credits"),
-        trailing: const Icon(Icons.chevron_right),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(
+            children: [
+              Icon(Icons.credit_card, size: 14, color: AppColors.textMedium),
+              const SizedBox(width: 4),
+              Text(
+                "${course.credits} Credits",
+                style: const TextStyle(color: AppColors.textMedium),
+              ),
+              const SizedBox(width: 12),
+              Icon(Icons.person_outline, size: 14, color: AppColors.textMedium),
+              const SizedBox(width: 4),
+              Text(
+                course.instructorId.isNotEmpty ? "Assigned" : "TBD",
+                style: const TextStyle(color: AppColors.textMedium),
+              ),
+            ],
+          ),
+        ),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: AppColors.textDisabled,
+        ),
+        onTap: () {
+          // Navigate to Course Details if implemented, else show snackbar
+          _showPlaceholder("Course Details for ${course.code}");
+        },
       ),
     );
   }
+
+  Widget _buildEmptyState(String msg) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+      ),
+      child: Center(
+        child: Text(msg, style: const TextStyle(color: AppColors.textMedium)),
+      ),
+    );
+  }
+
+  Widget _buildGridMenu(List<_MenuOption> options) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: options.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.5,
+      ),
+      itemBuilder: (context, index) {
+        final opt = options[index];
+        return InkWell(
+          onTap: () => _showPlaceholder(opt.title),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(opt.icon, color: AppColors.primaryLight, size: 28),
+                const SizedBox(height: 8),
+                Text(
+                  opt.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textHigh,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _MenuOption {
+  final String title;
+  final IconData icon;
+  _MenuOption(this.title, this.icon);
 }

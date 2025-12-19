@@ -26,34 +26,36 @@ class _FacultyHomeState extends State<FacultyHome> {
     });
   }
 
+  void _showPlaceholder(String featureName) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Feature '$featureName' is under development."),
+        backgroundColor: AppColors.primaryVariant,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheduleProvider = context.watch<ScheduleProvider>();
     final courseProvider = context.watch<CourseProvider>();
-
-    // Get user name
     final user = context.watch<AuthProvider>().userProfile;
     final firstName = user?['first_name'] ?? 'Faculty';
 
     // 1. Calculate Stats
     final myCourses = courseProvider.courses;
-
     final totalStudents = myCourses.fold<int>(
       0,
       (sum, course) => sum + course.enrolledStudents.length,
     );
-
-    final today = DateTime.now();
-    final todaysClasses = scheduleProvider.getSessionsForDate(today);
+    final todaysClasses = scheduleProvider.getSessionsForDate(DateTime.now());
 
     // 2. Find Upcoming Class
     ClassSession? upcomingSession;
     final now = DateTime.now();
-
     todaysClasses.sort(
       (a, b) => (a.activeStartTime ?? now).compareTo(b.activeStartTime ?? now),
     );
-
     try {
       upcomingSession = todaysClasses.firstWhere(
         (s) => s.activeEndTime != null && s.activeEndTime!.isAfter(now),
@@ -63,13 +65,14 @@ class _FacultyHomeState extends State<FacultyHome> {
     }
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const CourseFormScreen()),
         ),
-        child: const Icon(Icons.add),
+        label: const Text("New Course"),
+        icon: const Icon(Icons.add),
       ),
       body: RefreshIndicator(
         onRefresh: () async {
@@ -78,18 +81,15 @@ class _FacultyHomeState extends State<FacultyHome> {
         },
         child: CustomScrollView(
           slivers: [
-            // 1. Sliver App Bar
+            // Header
             SliverAppBar(
-              expandedHeight: 200.0,
+              expandedHeight: 220.0,
               pinned: true,
+              backgroundColor: AppColors.background,
               flexibleSpace: FlexibleSpaceBar(
                 title: Text(
-                  "Welcome, $firstName",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    shadows: [Shadow(color: Colors.black45, blurRadius: 2)],
-                  ),
+                  "Welcome, Prof. $firstName",
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
                 background: Stack(
                   fit: StackFit.expand,
@@ -97,8 +97,6 @@ class _FacultyHomeState extends State<FacultyHome> {
                     Image.network(
                       "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1000&auto=format&fit=crop",
                       fit: BoxFit.cover,
-                      errorBuilder: (c, e, s) =>
-                          Container(color: AppColors.surfaceElevated),
                     ),
                     Container(
                       decoration: BoxDecoration(
@@ -106,12 +104,10 @@ class _FacultyHomeState extends State<FacultyHome> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.0),
-                            Colors.black.withOpacity(0.5),
-                            Colors.black.withOpacity(0.8),
+                            Colors.black.withOpacity(0.1),
+                            Colors.black.withOpacity(0.6),
+                            Colors.black,
                           ],
-                          stops: const [0.0, 0.6, 0.85, 1.0],
                         ),
                       ),
                     ),
@@ -120,81 +116,160 @@ class _FacultyHomeState extends State<FacultyHome> {
               ),
             ),
 
-            // 2. Main Content
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "Faculty Dashboard",
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    const SizedBox(height: 16),
+                    // --- WORKING FEATURES ---
 
-                    // Real Stats
+                    // Stats Row
                     Row(
                       children: [
                         Expanded(
                           child: _statCard(
-                              "Classes Today", "${todaysClasses.length}"),
+                            "Classes Today",
+                            "${todaysClasses.length}",
+                            Icons.calendar_today,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                            child: _statCard("Total Students", "$totalStudents")),
+                          child: _statCard(
+                            "Total Students",
+                            "$totalStudents",
+                            Icons.groups,
+                          ),
+                        ),
                       ],
                     ),
+                    const SizedBox(height: 24),
 
-                    const SizedBox(height: 16),
-
-                    // Real Upcoming Class
+                    // Upcoming Class Card
+                    const Text(
+                      "Live Status",
+                      style: TextStyle(
+                        color: AppColors.textDisabled,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: AppColors.surfaceElevated,
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.surfaceElevated,
+                            AppColors.surface,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                            color: AppColors.primary.withOpacity(0.3)),
+                          color: AppColors.primary.withOpacity(0.2),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            "Upcoming Class",
-                            style: TextStyle(color: AppColors.textMedium),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                "Upcoming Session",
+                                style: TextStyle(
+                                  color: AppColors.primaryLight,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (upcomingSession != null)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    "ON TIME",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
                           if (upcomingSession != null) ...[
                             Text(
                               upcomingSession.courseName,
                               style: const TextStyle(
-                                fontSize: 20,
+                                fontSize: 22,
                                 fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
                             ),
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 8),
                             Row(
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.access_time,
-                                  size: 16,
-                                  color: AppColors.primary,
+                                  size: 18,
+                                  color: AppColors.textMedium,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   "${DateFormat('h:mm a').format(upcomingSession.activeStartTime!)} - ${upcomingSession.room}",
-                                  style: const TextStyle(color: AppColors.textHigh),
+                                  style: const TextStyle(
+                                    color: AppColors.textHigh,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                ),
+                                icon: const Icon(
+                                  Icons.check_circle_outline,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  "Start Class & Attendance",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                onPressed: () =>
+                                    _showPlaceholder("Class Session Mode"),
+                              ),
+                            ),
                           ] else ...[
-                            const Text(
-                              "No more classes today",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textDisabled,
+                            const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 16),
+                                child: Text(
+                                  "No immediate classes scheduled.",
+                                  style: TextStyle(
+                                    color: AppColors.textDisabled,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -202,32 +277,99 @@ class _FacultyHomeState extends State<FacultyHome> {
                       ),
                     ),
 
-                    const SizedBox(height: 24),
-                    Text(
-                      "Assigned Courses",
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 32),
 
-                    if (courseProvider.isLoading)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(20),
-                          child: CircularProgressIndicator(),
+                    // Assigned Courses
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "My Courses",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      )
+                        TextButton(
+                          onPressed: () {},
+                          child: const Text("View All"),
+                        ),
+                      ],
+                    ),
+                    if (courseProvider.isLoading)
+                      const Center(child: LinearProgressIndicator())
                     else if (myCourses.isEmpty)
                       const Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text("No courses assigned."),
+                        padding: EdgeInsets.all(16),
+                        child: Text("No courses assigned yet."),
                       )
                     else
-                      Column(
-                        children: myCourses
-                            .map((course) => _buildCourseTile(context, course))
-                            .toList(),
+                      ListView.builder(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: myCourses.take(3).length, // Show top 3
+                        itemBuilder: (ctx, i) =>
+                            _buildCourseTile(context, myCourses[i]),
                       ),
-                    const SizedBox(height: 80), // Space for FAB
+
+                    // --- DUMMY FEATURES (MVP) ---
+                    const SizedBox(height: 32),
+                    const Divider(color: AppColors.divider),
+                    const SizedBox(height: 16),
+
+                    const Text(
+                      "Teaching Tools",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildToolGrid([
+                      _ToolOption("Gradebook", Icons.grade, Colors.orange),
+                      _ToolOption("Assignments", Icons.assignment, Colors.blue),
+                      _ToolOption(
+                        "Course Materials",
+                        Icons.folder_copy,
+                        Colors.purple,
+                      ),
+                      _ToolOption(
+                        "Student Analytics",
+                        Icons.insights,
+                        Colors.teal,
+                      ),
+                    ]),
+
+                    const SizedBox(height: 24),
+                    const Text(
+                      "Department & Admin",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildToolGrid([
+                      _ToolOption(
+                        "Leave Request",
+                        Icons.flight_takeoff,
+                        Colors.redAccent,
+                      ),
+                      _ToolOption(
+                        "Exam Invigilation",
+                        Icons.remove_red_eye,
+                        Colors.indigo,
+                      ),
+                      _ToolOption(
+                        "Notices",
+                        Icons.notifications_active,
+                        Colors.amber,
+                      ),
+                      _ToolOption("Profile", Icons.person_pin, Colors.green),
+                    ]),
+
+                    const SizedBox(height: 80),
                   ],
                 ),
               ),
@@ -238,41 +380,54 @@ class _FacultyHomeState extends State<FacultyHome> {
     );
   }
 
-  Widget _statCard(String label, String value) {
+  Widget _statCard(String label, String value, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Icon(icon, color: AppColors.primary, size: 28),
+          const SizedBox(height: 12),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 24,
+              fontSize: 28,
               fontWeight: FontWeight.bold,
-              color: AppColors.primaryLight,
+              color: Colors.white,
             ),
           ),
-          Text(label, style: const TextStyle(color: AppColors.textMedium)),
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.textMedium, fontSize: 12),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildCourseTile(BuildContext context, Course course) {
-    return Card(
-      color: AppColors.surface,
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: ListTile(
-        title: Text(course.name),
+        title: Text(
+          course.name,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         subtitle: Text(
           "${course.code} • ${course.enrolledStudents.length} Students",
+          style: const TextStyle(color: AppColors.textMedium),
         ),
         trailing: IconButton(
-          icon: const Icon(Icons.edit, color: AppColors.textMedium),
+          icon: const Icon(Icons.edit_note, color: AppColors.primary),
           onPressed: () => Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => CourseFormScreen(course: course)),
@@ -281,4 +436,58 @@ class _FacultyHomeState extends State<FacultyHome> {
       ),
     );
   }
+
+  Widget _buildToolGrid(List<_ToolOption> tools) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: tools.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 2.5,
+      ),
+      itemBuilder: (ctx, i) {
+        return InkWell(
+          onTap: () => _showPlaceholder(tools[i].label),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: tools[i].color.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(tools[i].icon, size: 20, color: tools[i].color),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    tools[i].label,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ToolOption {
+  final String label;
+  final IconData icon;
+  final Color color;
+  _ToolOption(this.label, this.icon, this.color);
 }

@@ -6,8 +6,22 @@ import '../../../providers/auth_provider.dart';
 import '../../courses/course_form_screen.dart';
 import '../../schedule/create_session_screen.dart';
 
-class AdminHome extends StatelessWidget {
+class AdminHome extends StatefulWidget {
   const AdminHome({super.key});
+
+  @override
+  State<AdminHome> createState() => _AdminHomeState();
+}
+
+class _AdminHomeState extends State<AdminHome> {
+  void _showPlaceholder(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("$msg (Coming Soon)"),
+        backgroundColor: AppColors.primaryVariant,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,17 +30,17 @@ class AdminHome extends StatelessWidget {
 
     return CustomScrollView(
       slivers: [
-        // 1. Sliver App Bar
+        // 1. Header
         SliverAppBar(
           expandedHeight: 200.0,
           pinned: true,
+          backgroundColor: AppColors.background,
           flexibleSpace: FlexibleSpaceBar(
             title: Text(
-              "Welcome, $firstName",
-              style: const TextStyle(
+              "Admin Console",
+              style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                shadows: [Shadow(color: Colors.black45, blurRadius: 2)],
               ),
             ),
             background: Stack(
@@ -35,8 +49,6 @@ class AdminHome extends StatelessWidget {
                 Image.network(
                   "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1000&auto=format&fit=crop",
                   fit: BoxFit.cover,
-                  errorBuilder: (c, e, s) =>
-                      Container(color: AppColors.surfaceElevated),
                 ),
                 Container(
                   decoration: BoxDecoration(
@@ -45,11 +57,8 @@ class AdminHome extends StatelessWidget {
                       end: Alignment.bottomCenter,
                       colors: [
                         Colors.transparent,
-                        Colors.black.withOpacity(0.0),
-                        Colors.black.withOpacity(0.5),
                         Colors.black.withOpacity(0.8),
                       ],
-                      stops: const [0.0, 0.6, 0.85, 1.0],
                     ),
                   ),
                 ),
@@ -58,35 +67,52 @@ class AdminHome extends StatelessWidget {
           ),
         ),
 
-        // 2. Main Content
+        // 2. Content
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Admin Console",
-                  style: Theme.of(context).textTheme.headlineSmall,
+                const Text(
+                  "Welcome back,",
+                  style: TextStyle(color: AppColors.textMedium),
                 ),
-                const SizedBox(height: 20),
+                Text(
+                  firstName,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 24),
 
-                _buildAdminOption(
-                  context,
-                  icon: Icons.add_box,
-                  title: "Create New Course",
-                  subtitle: "Define new curriculum entries",
+                // --- WORKING FEATURES ---
+                const Text(
+                  "Core Operations",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildOperationCard(
+                  icon: Icons.add_business,
+                  title: "Course Management",
+                  subtitle: "Create and edit curriculum",
+                  color: Colors.blueAccent,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const CourseFormScreen()),
                   ),
                 ),
-
-                _buildAdminOption(
-                  context,
-                  icon: Icons.calendar_month,
-                  title: "Schedule Session",
-                  subtitle: "Add classes to the master timetable",
+                _buildOperationCard(
+                  icon: Icons.calendar_month_outlined,
+                  title: "Schedule Sessions",
+                  subtitle: "Manage master timetable",
+                  color: Colors.orangeAccent,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -94,14 +120,89 @@ class AdminHome extends StatelessWidget {
                     ),
                   ),
                 ),
-
-                _buildAdminOption(
-                  context,
-                  icon: Icons.people_alt,
+                _buildOperationCard(
+                  icon: Icons.person_add_alt_1,
                   title: "Enroll Student",
-                  subtitle: "Assign students to specific courses",
+                  subtitle: "Assign students to courses",
+                  color: Colors.greenAccent,
                   onTap: () => _showEnrollDialog(context),
                 ),
+
+                // --- DUMMY FEATURES (MVP) ---
+                const SizedBox(height: 32),
+                const Divider(color: AppColors.divider),
+                const SizedBox(height: 16),
+
+                const Text(
+                  "Financial Management",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 120,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _buildSquareBtn(
+                        "Fee Reports",
+                        Icons.receipt_long,
+                        () => _showPlaceholder("Fee Reports"),
+                      ),
+                      _buildSquareBtn(
+                        "Payroll",
+                        Icons.payments,
+                        () => _showPlaceholder("Payroll"),
+                      ),
+                      _buildSquareBtn(
+                        "Invoices",
+                        Icons.description,
+                        () => _showPlaceholder("Invoices"),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+                const Text(
+                  "Institution & Systems",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _buildListOption(
+                  Icons.admin_panel_settings,
+                  "User Roles & Permissions",
+                  () => _showPlaceholder("RBAC"),
+                ),
+                _buildListOption(
+                  Icons.meeting_room,
+                  "Room & Infrastructure",
+                  () => _showPlaceholder("Infrastructure"),
+                ),
+                _buildListOption(
+                  Icons.notifications_active,
+                  "Notification Blast",
+                  () => _showPlaceholder("Notifications"),
+                ),
+                _buildListOption(
+                  Icons.analytics,
+                  "System Analytics",
+                  () => _showPlaceholder("Analytics"),
+                ),
+                _buildListOption(
+                  Icons.security,
+                  "Audit Logs",
+                  () => _showPlaceholder("Audit Logs"),
+                ),
+
+                const SizedBox(height: 40),
               ],
             ),
           ),
@@ -110,32 +211,117 @@ class AdminHome extends StatelessWidget {
     );
   }
 
-  Widget _buildAdminOption(
-    BuildContext context, {
+  Widget _buildOperationCard({
     required IconData icon,
     required String title,
     required String subtitle,
+    required Color color,
     required VoidCallback onTap,
   }) {
     return Card(
       color: AppColors.surface,
-      margin: const EdgeInsets.only(bottom: 16),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceElevated,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: AppColors.primary),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(
-          subtitle,
-          style: const TextStyle(color: AppColors.textMedium),
-        ),
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.border),
+      ),
+      child: InkWell(
         onTap: onTap,
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textHigh,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.arrow_forward_ios,
+                size: 14,
+                color: AppColors.textDisabled,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSquareBtn(String label, IconData icon, VoidCallback onTap) {
+    return Container(
+      width: 100,
+      margin: const EdgeInsets.only(right: 12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: AppColors.textHigh, size: 32),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListOption(IconData icon, String title, VoidCallback onTap) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        onTap: onTap,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        tileColor: AppColors.surface,
+        leading: Icon(icon, color: AppColors.textMedium),
+        title: Text(title, style: const TextStyle(color: AppColors.textHigh)),
+        trailing: const Icon(
+          Icons.chevron_right,
+          color: AppColors.textDisabled,
+        ),
       ),
     );
   }
@@ -147,22 +333,22 @@ class AdminHome extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Enroll Student"),
+        backgroundColor: AppColors.surfaceElevated,
+        title: const Text(
+          "Enroll Student",
+          style: TextStyle(color: Colors.white),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: courseIdCtrl,
-              decoration: const InputDecoration(
-                labelText: "Course ID (e.g. demo_..._CS101)",
-              ),
+              decoration: const InputDecoration(labelText: "Course ID"),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: studentIdCtrl,
-              decoration: const InputDecoration(
-                labelText: "Student ID (Firebase UID)",
-              ),
+              decoration: const InputDecoration(labelText: "Student ID (UID)"),
             ),
           ],
         ),
@@ -182,11 +368,7 @@ class AdminHome extends StatelessWidget {
               if (ctx.mounted) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      success ? "Enrolled Successfully" : "Enrollment Failed",
-                    ),
-                  ),
+                  SnackBar(content: Text(success ? "Enrolled" : "Failed")),
                 );
               }
             },
