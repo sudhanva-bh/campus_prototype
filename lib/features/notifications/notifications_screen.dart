@@ -1,8 +1,35 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    // Start animation on load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _animController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
 
   void _showPlaceholder(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
@@ -15,8 +42,98 @@ class NotificationsScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildAnimatedChild(Widget child, int index) {
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (context, child) {
+        final double start = (index * 0.1).clamp(0.0, 1.0);
+        final double end = (start + 0.4).clamp(0.0, 1.0);
+        final curve = CurvedAnimation(
+          parent: _animController,
+          curve: Interval(start, end, curve: Curves.easeOutQuart),
+        );
+        return FadeTransition(
+          opacity: curve,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.1),
+              end: Offset.zero,
+            ).animate(curve),
+            child: child!,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // List of content to display
+    final List<Widget> listItems = [
+      // Dummy "Today" Section
+      const Padding(
+        padding: EdgeInsets.only(bottom: 12, left: 4),
+        child: Text(
+          "Today",
+          style: TextStyle(
+            color: AppColors.textMedium,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      _buildNotificationCard(
+        context,
+        title: "Upcoming Class: CS101",
+        body: "Lecture starts in 15 minutes at Room 304B.",
+        time: "10 mins ago",
+        icon: Icons.event,
+        color: Colors.blueAccent,
+        isUnread: true,
+      ),
+      _buildNotificationCard(
+        context,
+        title: "Fee Payment Reminder",
+        body: "Semester 2 fees are due by Dec 25th.",
+        time: "2 hours ago",
+        icon: Icons.payment,
+        color: Colors.orangeAccent,
+        isUnread: true,
+      ),
+
+      const SizedBox(height: 24),
+
+      // Dummy "Earlier" Section
+      const Padding(
+        padding: EdgeInsets.only(bottom: 12, left: 4),
+        child: Text(
+          "Earlier",
+          style: TextStyle(
+            color: AppColors.textMedium,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+      _buildNotificationCard(
+        context,
+        title: "Assignment Graded",
+        body: "Your submission for 'Data Structures' has been graded.",
+        time: "Yesterday",
+        icon: Icons.grade,
+        color: Colors.greenAccent,
+        isUnread: false,
+      ),
+      _buildNotificationCard(
+        context,
+        title: "Campus Event: Hackathon",
+        body: "Registration for the annual hackathon is now open.",
+        time: "2 days ago",
+        icon: Icons.campaign,
+        color: Colors.purpleAccent,
+        isUnread: false,
+      ),
+    ];
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -42,71 +159,12 @@ class NotificationsScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
+      body: ListView.builder(
         padding: const EdgeInsets.all(16),
-        children: [
-          // Dummy "Today" Section
-          const Padding(
-            padding: EdgeInsets.only(bottom: 12, left: 4),
-            child: Text(
-              "Today",
-              style: TextStyle(
-                color: AppColors.textMedium,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          _buildNotificationCard(
-            context,
-            title: "Upcoming Class: CS101",
-            body: "Lecture starts in 15 minutes at Room 304B.",
-            time: "10 mins ago",
-            icon: Icons.event,
-            color: Colors.blueAccent,
-            isUnread: true,
-          ),
-          _buildNotificationCard(
-            context,
-            title: "Fee Payment Reminder",
-            body: "Semester 2 fees are due by Dec 25th.",
-            time: "2 hours ago",
-            icon: Icons.payment,
-            color: Colors.orangeAccent,
-            isUnread: true,
-          ),
-
-          const SizedBox(height: 24),
-
-          // Dummy "Earlier" Section
-          const Padding(
-            padding: EdgeInsets.only(bottom: 12, left: 4),
-            child: Text(
-              "Earlier",
-              style: TextStyle(
-                color: AppColors.textMedium,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          _buildNotificationCard(
-            context,
-            title: "Assignment Graded",
-            body: "Your submission for 'Data Structures' has been graded.",
-            time: "Yesterday",
-            icon: Icons.grade,
-            color: Colors.greenAccent,
-            isUnread: false,
-          ),
-          _buildNotificationCard(
-            context,
-            title: "Campus Event: Hackathon",
-            body: "Registration for the annual hackathon is now open.",
-            time: "2 days ago",
-            icon: Icons.campaign,
-            color: Colors.purpleAccent,
-            isUnread: false,
-          ),
-        ],
+        itemCount: listItems.length,
+        itemBuilder: (context, index) {
+          return _buildAnimatedChild(listItems[index], index);
+        },
       ),
     );
   }

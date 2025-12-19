@@ -6,7 +6,7 @@ import 'role_views/faculty_home.dart';
 import 'role_views/admin_home.dart';
 import '../profile/profile_screen.dart';
 import '../schedule/schedule_screen.dart';
-import '../notifications/notifications_screen.dart'; // Import this
+import '../notifications/notifications_screen.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -16,44 +16,77 @@ class MainWrapper extends StatefulWidget {
 }
 
 class _MainWrapperState extends State<MainWrapper> {
+  // 1. Controller to handle sliding programmatically
+  late PageController _pageController;
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: _currentIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _onBottomNavTapped(int index) {
+    setState(() => _currentIndex = index);
+    // 2. Animate the PageView to the selected page
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic, // A smooth slide curve
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final role = context.select((AuthProvider p) => p.userRole);
 
-    Widget bodyContent;
-
-    if (_currentIndex == 0) {
-      switch (role) {
-        case 'student':
-          bodyContent = const StudentHome();
-          break;
-        case 'faculty':
-          bodyContent = const FacultyHome();
-          break;
-        case 'admin':
-          bodyContent = const AdminHome();
-          break;
-        default:
-          bodyContent = const Center(child: Text("Unknown Role"));
-      }
-    } else if (_currentIndex == 1) {
-      bodyContent = const ScheduleScreen();
-    } else if (_currentIndex == 2) {
-      bodyContent = const NotificationsScreen(); // Updated
-    } else {
-      bodyContent = const ProfileScreen();
+    // Determine Home Screen
+    Widget homeScreen;
+    switch (role) {
+      case 'student':
+        homeScreen = const StudentHome();
+        break;
+      case 'faculty':
+        homeScreen = const FacultyHome();
+        break;
+      case 'admin':
+        homeScreen = const AdminHome();
+        break;
+      default:
+        homeScreen = const Center(child: Text("Unknown Role"));
     }
 
+    // 3. Wrap pages in KeepAliveWrapper to save state (scroll position etc.)
+    final List<Widget> pages = [
+      KeepAliveWrapper(child: homeScreen),
+      const KeepAliveWrapper(child: ScheduleScreen()),
+      const KeepAliveWrapper(child: NotificationsScreen()),
+      const KeepAliveWrapper(child: ProfileScreen()),
+    ];
+
     return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: bodyContent,
+      body: PageView(
+        controller: _pageController,
+        // 4. Disable user swiping if you only want Nav Bar control (optional)
+        // physics: const NeverScrollableScrollPhysics(),
+        onPageChanged: (index) {
+          setState(() => _currentIndex = index);
+        },
+        children: pages,
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Theme.of(context).primaryColor,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        onTap: _onBottomNavTapped,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard_outlined),
@@ -79,4 +112,25 @@ class _MainWrapperState extends State<MainWrapper> {
       ),
     );
   }
+}
+
+// --- HELPER WIDGET TO KEEP STATE ALIVE ---
+class KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+  const KeepAliveWrapper({super.key, required this.child});
+
+  @override
+  State<KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // This must be called
+    return widget.child;
+  }
+
+  @override
+  bool get wantKeepAlive => true; // Prevents the page from being disposed
 }

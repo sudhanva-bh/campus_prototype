@@ -12,13 +12,30 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+
   @override
   void initState() {
     super.initState();
+    // 1. Initialize Animation Controller
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 2. Start Animation & Fetch Data
+      _animController.forward();
       context.read<AuthProvider>().fetchProfile();
     });
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
   }
 
   void _handleLogout() {
@@ -37,6 +54,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // 3. Animation Helper
+  Widget _buildAnimatedChild(Widget child, int index) {
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (context, child) {
+        final double start = (index * 0.1).clamp(0.0, 1.0);
+        final double end = (start + 0.4).clamp(0.0, 1.0);
+        final curve = CurvedAnimation(
+          parent: _animController,
+          curve: Interval(start, end, curve: Curves.easeOutQuart),
+        );
+
+        return FadeTransition(
+          opacity: curve,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.1),
+              end: Offset.zero,
+            ).animate(curve),
+            child: child!,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
@@ -46,6 +90,143 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (user == null) {
       return _buildShimmerProfile();
     }
+
+    // 4. Organize content into a list for animation
+    final List<Widget> contentWidgets = [
+      // Profile Header
+      _buildProfileHeader(user),
+
+      const SizedBox(height: 32),
+
+      // Contact Info
+      _buildSectionHeader("Contact Information"),
+      _buildInfoCard([
+        _buildDetailRow(Icons.email_outlined, "Email", user['email']),
+        _buildDivider(),
+        _buildDetailRow(
+          Icons.phone_outlined,
+          "Phone",
+          user['phone'] ?? "Not provided",
+        ),
+        _buildDivider(),
+        _buildDetailRow(Icons.location_on_outlined, "Address", "Campus Dorm A"),
+      ]),
+
+      const SizedBox(height: 24),
+
+      // Role Specific Details
+      if (user['role'] == 'student' && user['student_info'] != null) ...[
+        _buildSectionHeader("Academic Details"),
+        _buildInfoCard([
+          _buildDetailRow(
+            Icons.badge_outlined,
+            "Student ID",
+            user['student_info']['student_id'],
+          ),
+          _buildDivider(),
+          _buildDetailRow(
+            Icons.school_outlined,
+            "Program",
+            user['student_info']['program'],
+          ),
+          _buildDivider(),
+          _buildDetailRow(
+            Icons.account_tree_outlined,
+            "Department",
+            user['student_info']['department'],
+          ),
+        ]),
+      ] else if (user['role'] == 'faculty' && user['faculty_info'] != null) ...[
+        _buildSectionHeader("Faculty Details"),
+        _buildInfoCard([
+          _buildDetailRow(
+            Icons.badge_outlined,
+            "Employee ID",
+            user['faculty_info']['employee_id'],
+          ),
+          _buildDivider(),
+          _buildDetailRow(
+            Icons.work_outline,
+            "Designation",
+            user['faculty_info']['designation'],
+          ),
+        ]),
+      ],
+
+      const SizedBox(height: 24),
+
+      // Academic Records
+      _buildSectionHeader("Academic Records"),
+      _buildInfoCard([
+        _buildClickableRow(
+          Icons.description_outlined,
+          "Transcripts",
+          () => _showPlaceholder("Transcript Download"),
+        ),
+        _buildDivider(),
+        _buildClickableRow(
+          Icons.workspace_premium_outlined,
+          "Certificates",
+          () => _showPlaceholder("Certificates"),
+        ),
+        _buildDivider(),
+        _buildClickableRow(
+          Icons.history_edu,
+          "Enrollment History",
+          () => _showPlaceholder("Enrollment History"),
+        ),
+      ]),
+
+      const SizedBox(height: 24),
+
+      // Settings & Privacy
+      _buildSectionHeader("Settings & Privacy"),
+      _buildInfoCard([
+        _buildClickableRow(
+          Icons.notifications_outlined,
+          "Notification Preferences",
+          () => _showPlaceholder("Notification Settings"),
+        ),
+        _buildDivider(),
+        _buildClickableRow(
+          Icons.language,
+          "Language",
+          () => _showPlaceholder("Language Selection"),
+        ),
+        _buildDivider(),
+        _buildClickableRow(
+          Icons.lock_outline,
+          "Privacy & Data Export",
+          () => _showPlaceholder("GDPR Data Export"),
+        ),
+      ]),
+
+      const SizedBox(height: 24),
+
+      // Account Actions
+      _buildSectionHeader("Account"),
+      _buildActionTile(
+        icon: Icons.edit_outlined,
+        title: "Edit Profile",
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EditProfileScreen(initialData: user),
+            ),
+          );
+        },
+      ),
+      const SizedBox(height: 12),
+      _buildActionTile(
+        icon: Icons.logout,
+        title: "Logout",
+        isDestructive: true,
+        onTap: _handleLogout,
+      ),
+
+      const SizedBox(height: 40),
+    ];
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -59,153 +240,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: () async => await auth.fetchProfile(),
+        onRefresh: () async {
+          _animController.reset();
+          _animController.forward();
+          await auth.fetchProfile();
+        },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // 1. Profile Header
-              _buildProfileHeader(user),
-
-              const SizedBox(height: 32),
-
-              // 2. Contact Info (Existing)
-              _buildSectionHeader("Contact Information"),
-              _buildInfoCard([
-                _buildDetailRow(Icons.email_outlined, "Email", user['email']),
-                _buildDivider(),
-                _buildDetailRow(
-                  Icons.phone_outlined,
-                  "Phone",
-                  user['phone'] ?? "Not provided",
-                ),
-                _buildDivider(),
-                _buildDetailRow(
-                  Icons.location_on_outlined,
-                  "Address",
-                  "Campus Dorm A",
-                ), // Dummy data
-              ]),
-
-              const SizedBox(height: 24),
-
-              // 3. Role Specific Details
-              if (user['role'] == 'student' &&
-                  user['student_info'] != null) ...[
-                _buildSectionHeader("Academic Details"),
-                _buildInfoCard([
-                  _buildDetailRow(
-                    Icons.badge_outlined,
-                    "Student ID",
-                    user['student_info']['student_id'],
-                  ),
-                  _buildDivider(),
-                  _buildDetailRow(
-                    Icons.school_outlined,
-                    "Program",
-                    user['student_info']['program'],
-                  ),
-                  _buildDivider(),
-                  _buildDetailRow(
-                    Icons.account_tree_outlined,
-                    "Department",
-                    user['student_info']['department'],
-                  ),
-                ]),
-              ] else if (user['role'] == 'faculty' &&
-                  user['faculty_info'] != null) ...[
-                _buildSectionHeader("Faculty Details"),
-                _buildInfoCard([
-                  _buildDetailRow(
-                    Icons.badge_outlined,
-                    "Employee ID",
-                    user['faculty_info']['employee_id'],
-                  ),
-                  _buildDivider(),
-                  _buildDetailRow(
-                    Icons.work_outline,
-                    "Designation",
-                    user['faculty_info']['designation'],
-                  ),
-                ]),
-              ],
-
-              const SizedBox(height: 24),
-
-              // 4. Academic Records
-              _buildSectionHeader("Academic Records"),
-              _buildInfoCard([
-                _buildClickableRow(
-                  Icons.description_outlined,
-                  "Transcripts",
-                  () => _showPlaceholder("Transcript Download"),
-                ),
-                _buildDivider(),
-                _buildClickableRow(
-                  Icons.workspace_premium_outlined,
-                  "Certificates",
-                  () => _showPlaceholder("Certificates"),
-                ),
-                _buildDivider(),
-                _buildClickableRow(
-                  Icons.history_edu,
-                  "Enrollment History",
-                  () => _showPlaceholder("Enrollment History"),
-                ),
-              ]),
-
-              const SizedBox(height: 24),
-
-              // 5. Settings & Privacy
-              _buildSectionHeader("Settings & Privacy"),
-              _buildInfoCard([
-                _buildClickableRow(
-                  Icons.notifications_outlined,
-                  "Notification Preferences",
-                  () => _showPlaceholder("Notification Settings"),
-                ),
-                _buildDivider(),
-                _buildClickableRow(
-                  Icons.language,
-                  "Language",
-                  () => _showPlaceholder("Language Selection"),
-                ),
-                _buildDivider(),
-                _buildClickableRow(
-                  Icons.lock_outline,
-                  "Privacy & Data Export",
-                  () => _showPlaceholder("GDPR Data Export"),
-                ),
-              ]),
-
-              const SizedBox(height: 24),
-
-              // 6. Account Actions
-              _buildSectionHeader("Account"),
-              _buildActionTile(
-                icon: Icons.edit_outlined,
-                title: "Edit Profile",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => EditProfileScreen(initialData: user),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              _buildActionTile(
-                icon: Icons.logout,
-                title: "Logout",
-                isDestructive: true,
-                onTap: _handleLogout,
-              ),
-
-              const SizedBox(height: 40),
-            ],
+            // 5. Map widgets to animation helper
+            children: contentWidgets
+                .asMap()
+                .entries
+                .map((entry) => _buildAnimatedChild(entry.value, entry.key))
+                .toList(),
           ),
         ),
       ),
@@ -213,7 +263,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // --- SHIMMER WIDGET ---
-
   Widget _buildShimmerProfile() {
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -234,7 +283,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Header Shimmer
               Container(
                 width: 100,
                 height: 100,
@@ -252,18 +300,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              const SizedBox(height: 8),
-              Container(
-                width: 80,
-                height: 20,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
               const SizedBox(height: 32),
-
-              // Sections Shimmer
               Column(
                 children: List.generate(
                   3,
@@ -301,8 +338,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // --- EXISTING WIDGETS ---
-
   Widget _buildProfileHeader(Map<String, dynamic> user) {
+    final String? photoUrl = user['profile_photo_url'];
+    final bool hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+    final String initials =
+        (user['first_name']?[0] ?? '') + (user['last_name']?[0] ?? '');
+
     return Column(
       children: [
         Container(
@@ -318,26 +359,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
-          child: CircleAvatar(
-            radius: 50,
-            backgroundColor: AppColors.surfaceElevated,
-            backgroundImage:
-                (user['profile_photo_url'] != null &&
-                    user['profile_photo_url'].isNotEmpty)
-                ? NetworkImage(user['profile_photo_url'])
-                : null,
-            child:
-                (user['profile_photo_url'] == null ||
-                    user['profile_photo_url'].isEmpty)
-                ? Text(
-                    (user['first_name']?[0] ?? '') +
-                        (user['last_name']?[0] ?? ''),
-                    style: const TextStyle(
-                      fontSize: 32,
-                      color: AppColors.textMedium,
-                    ),
-                  )
-                : null,
+          child: ClipOval(
+            child: SizedBox(
+              width: 100,
+              height: 100,
+              child: hasPhoto
+                  ? Image.network(
+                      photoUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: AppColors.surfaceElevated,
+                          child: Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return _buildInitialsFallback(initials);
+                      },
+                    )
+                  : _buildInitialsFallback(initials),
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -368,6 +421,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildInitialsFallback(String initials) {
+    return Container(
+      color: AppColors.surfaceElevated,
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: const TextStyle(fontSize: 32, color: AppColors.textMedium),
+      ),
     );
   }
 

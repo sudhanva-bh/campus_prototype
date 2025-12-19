@@ -18,14 +18,29 @@ class FacultyHome extends StatefulWidget {
   State<FacultyHome> createState() => _FacultyHomeState();
 }
 
-class _FacultyHomeState extends State<FacultyHome> {
+class _FacultyHomeState extends State<FacultyHome>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animController;
+
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _animController.forward();
       context.read<CourseProvider>().fetchCourses();
       context.read<ScheduleProvider>().fetchSessions();
     });
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
   }
 
   void _showPlaceholder(String featureName) {
@@ -35,6 +50,31 @@ class _FacultyHomeState extends State<FacultyHome> {
         content: Text("Feature '$featureName' is under development."),
         backgroundColor: AppColors.primaryVariant,
       ),
+    );
+  }
+
+  Widget _buildAnimatedChild(Widget child, int index) {
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (context, child) {
+        final double start = (index * 0.1).clamp(0.0, 1.0);
+        final double end = (start + 0.4).clamp(0.0, 1.0);
+        final curve = CurvedAnimation(
+          parent: _animController,
+          curve: Interval(start, end, curve: Curves.easeOutQuart),
+        );
+        return FadeTransition(
+          opacity: curve,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.1),
+              end: Offset.zero,
+            ).animate(curve),
+            child: child!,
+          ),
+        );
+      },
+      child: child,
     );
   }
 
@@ -69,6 +109,220 @@ class _FacultyHomeState extends State<FacultyHome> {
       upcomingSession = null;
     }
 
+    // Define content list for animation
+    final List<Widget> contentWidgets = [
+      // Stats Row
+      if (isLoading)
+        _buildShimmerStats()
+      else
+        Row(
+          children: [
+            Expanded(
+              child: _statCard(
+                "Classes Today",
+                "${todaysClasses.length}",
+                Icons.calendar_today,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _statCard(
+                "Total Students",
+                "$totalStudents",
+                Icons.groups,
+              ),
+            ),
+          ],
+        ),
+      const SizedBox(height: 24),
+
+      // Upcoming Class Card
+      const Text(
+        "Live Status",
+        style: TextStyle(
+          color: AppColors.textDisabled,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      const SizedBox(height: 8),
+
+      if (isLoading)
+        _buildShimmerUpcomingCard()
+      else
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.surfaceElevated, AppColors.surface],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Upcoming Session",
+                    style: TextStyle(
+                      color: AppColors.primaryLight,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (upcomingSession != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        "ON TIME",
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (upcomingSession != null) ...[
+                Text(
+                  upcomingSession.courseName,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.access_time,
+                      size: 18,
+                      color: AppColors.textMedium,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "${DateFormat('h:mm a').format(upcomingSession.activeStartTime!)} - ${upcomingSession.room}",
+                      style: const TextStyle(
+                        color: AppColors.textHigh,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
+                    icon: const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      "Start Class & Attendance",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    onPressed: () => _showPlaceholder("Class Session Mode"),
+                  ),
+                ),
+              ] else ...[
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      "No immediate classes scheduled.",
+                      style: TextStyle(color: AppColors.textDisabled),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+      const SizedBox(height: 32),
+
+      // Assigned Courses
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            "My Courses",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          TextButton(onPressed: () {}, child: const Text("View All")),
+        ],
+      ),
+      if (courseProvider.isLoading)
+        _buildShimmerCourseList()
+      else if (myCourses.isEmpty)
+        const Padding(
+          padding: EdgeInsets.all(16),
+          child: Text("No courses assigned yet."),
+        )
+      else
+        Column(
+          children: myCourses
+              .take(3)
+              .map((course) => _buildCourseTile(context, course))
+              .toList(),
+        ),
+
+      const SizedBox(height: 32),
+      const Divider(color: AppColors.divider),
+      const SizedBox(height: 16),
+
+      const Text(
+        "Teaching Tools",
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 16),
+      _buildToolGrid([
+        _ToolOption("Gradebook", Icons.grade, Colors.orange),
+        _ToolOption("Assignments", Icons.assignment, Colors.blue),
+        _ToolOption("Course Materials", Icons.folder_copy, Colors.purple),
+        _ToolOption("Student Analytics", Icons.insights, Colors.teal),
+      ]),
+
+      const SizedBox(height: 24),
+      const Text(
+        "Department & Admin",
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 16),
+      _buildToolGrid([
+        _ToolOption("Leave Request", Icons.flight_takeoff, Colors.redAccent),
+        _ToolOption("Exam Invigilation", Icons.remove_red_eye, Colors.indigo),
+        _ToolOption("Notices", Icons.notifications_active, Colors.amber),
+        _ToolOption("Profile", Icons.person_pin, Colors.green),
+      ]),
+
+      const SizedBox(height: 80),
+    ];
+
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
@@ -81,6 +335,8 @@ class _FacultyHomeState extends State<FacultyHome> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
+          _animController.reset();
+          _animController.forward();
           await context.read<CourseProvider>().fetchCourses();
           await context.read<ScheduleProvider>().fetchSessions();
         },
@@ -125,262 +381,13 @@ class _FacultyHomeState extends State<FacultyHome> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // --- WORKING FEATURES ---
-
-                    // Stats Row
-                    if (isLoading)
-                      _buildShimmerStats()
-                    else
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _statCard(
-                              "Classes Today",
-                              "${todaysClasses.length}",
-                              Icons.calendar_today,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _statCard(
-                              "Total Students",
-                              "$totalStudents",
-                              Icons.groups,
-                            ),
-                          ),
-                        ],
-                      ),
-                    const SizedBox(height: 24),
-
-                    // Upcoming Class Card
-                    const Text(
-                      "Live Status",
-                      style: TextStyle(
-                        color: AppColors.textDisabled,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    if (isLoading)
-                      _buildShimmerUpcomingCard()
-                    else
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppColors.surfaceElevated,
-                              AppColors.surface,
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: AppColors.primary.withOpacity(0.2),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  "Upcoming Session",
-                                  style: TextStyle(
-                                    color: AppColors.primaryLight,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                if (upcomingSession != null)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withOpacity(0.2),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Text(
-                                      "ON TIME",
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            if (upcomingSession != null) ...[
-                              Text(
-                                upcomingSession.courseName,
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.access_time,
-                                    size: 18,
-                                    color: AppColors.textMedium,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    "${DateFormat('h:mm a').format(upcomingSession.activeStartTime!)} - ${upcomingSession.room}",
-                                    style: const TextStyle(
-                                      color: AppColors.textHigh,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primary,
-                                  ),
-                                  icon: const Icon(
-                                    Icons.check_circle_outline,
-                                    color: Colors.white,
-                                  ),
-                                  label: const Text(
-                                    "Start Class & Attendance",
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  onPressed: () =>
-                                      _showPlaceholder("Class Session Mode"),
-                                ),
-                              ),
-                            ] else ...[
-                              const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 16),
-                                  child: Text(
-                                    "No immediate classes scheduled.",
-                                    style: TextStyle(
-                                      color: AppColors.textDisabled,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-
-                    const SizedBox(height: 32),
-
-                    // Assigned Courses
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          "My Courses",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () {},
-                          child: const Text("View All"),
-                        ),
-                      ],
-                    ),
-                    if (courseProvider.isLoading)
-                      _buildShimmerCourseList()
-                    else if (myCourses.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Text("No courses assigned yet."),
+                  children: contentWidgets
+                      .asMap()
+                      .entries
+                      .map(
+                        (entry) => _buildAnimatedChild(entry.value, entry.key),
                       )
-                    else
-                      ListView.builder(
-                        padding: EdgeInsets.zero,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: myCourses.take(3).length, // Show top 3
-                        itemBuilder: (ctx, i) =>
-                            _buildCourseTile(context, myCourses[i]),
-                      ),
-
-                    const SizedBox(height: 32),
-                    const Divider(color: AppColors.divider),
-                    const SizedBox(height: 16),
-
-                    const Text(
-                      "Teaching Tools",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildToolGrid([
-                      _ToolOption("Gradebook", Icons.grade, Colors.orange),
-                      _ToolOption("Assignments", Icons.assignment, Colors.blue),
-                      _ToolOption(
-                        "Course Materials",
-                        Icons.folder_copy,
-                        Colors.purple,
-                      ),
-                      _ToolOption(
-                        "Student Analytics",
-                        Icons.insights,
-                        Colors.teal,
-                      ),
-                    ]),
-
-                    const SizedBox(height: 24),
-                    const Text(
-                      "Department & Admin",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildToolGrid([
-                      _ToolOption(
-                        "Leave Request",
-                        Icons.flight_takeoff,
-                        Colors.redAccent,
-                      ),
-                      _ToolOption(
-                        "Exam Invigilation",
-                        Icons.remove_red_eye,
-                        Colors.indigo,
-                      ),
-                      _ToolOption(
-                        "Notices",
-                        Icons.notifications_active,
-                        Colors.amber,
-                      ),
-                      _ToolOption("Profile", Icons.person_pin, Colors.green),
-                    ]),
-
-                    const SizedBox(height: 80),
-                  ],
+                      .toList(),
                 ),
               ),
             ),

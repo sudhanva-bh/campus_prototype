@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shimmer/shimmer.dart'; // Add this import
+import 'package:shimmer/shimmer.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/course_model.dart';
@@ -15,13 +15,32 @@ class StudentHome extends StatefulWidget {
   State<StudentHome> createState() => _StudentHomeState();
 }
 
-class _StudentHomeState extends State<StudentHome> {
+class _StudentHomeState extends State<StudentHome>
+    with SingleTickerProviderStateMixin {
+  // 1. Animation Controller
+  late AnimationController _animController;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize Animation
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    // Start Animation and Fetch Data
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _animController.forward();
       context.read<CourseProvider>().fetchCourses();
     });
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
   }
 
   void _showPlaceholder(String featureName) {
@@ -35,13 +54,174 @@ class _StudentHomeState extends State<StudentHome> {
     );
   }
 
+  // 2. Helper to animate items one by one
+  Widget _buildAnimatedChild(Widget child, int index) {
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (context, child) {
+        // Calculate delay based on index (stagger effect)
+        final double start = (index * 0.05).clamp(
+          0.0,
+          1.0,
+        ); // Reduced delay slightly for smoother long list
+        final double end = (start + 0.4).clamp(0.0, 1.0);
+
+        final curve = CurvedAnimation(
+          parent: _animController,
+          curve: Interval(start, end, curve: Curves.easeOutQuart),
+        );
+
+        return FadeTransition(
+          opacity: curve,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.1),
+              end: Offset.zero,
+            ).animate(curve),
+            child: child!,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().userProfile;
     final firstName = user?['first_name'] ?? 'Student';
 
+    // 3. Define the comprehensive list of widgets
+    final List<Widget> contentWidgets = [
+      // --- Quick Actions ---
+      _buildSectionHeader("Quick Actions"),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: _BouncingButton(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AttendanceScreen()),
+                );
+              },
+              child: _buildActionBtn(
+                Icons.camera_alt_outlined,
+                "Mark Attendance",
+                AppColors.primary,
+                isDark: false,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _BouncingButton(
+              onTap: () => _showPlaceholder("QR Scan Entry"),
+              child: _buildActionBtn(
+                Icons.qr_code_scanner,
+                "Scan Entry",
+                AppColors.surfaceElevated,
+                isDark: true,
+              ),
+            ),
+          ),
+        ],
+      ),
+
+      const SizedBox(height: 24),
+
+      // --- Enrolled Courses ---
+      _buildSectionHeader("Enrolled Courses"),
+      Consumer<CourseProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoading) {
+            return _buildShimmerCourseList();
+          }
+          if (provider.courses.isEmpty) {
+            return _buildEmptyState("No courses enrolled yet.");
+          }
+          return Column(
+            children: provider.courses
+                .map(
+                  (course) => _BouncingButton(
+                    onTap: () {
+                      _showPlaceholder("Course Details for ${course.code}");
+                    },
+                    child: _buildCourseCard(course),
+                  ),
+                )
+                .toList(),
+          );
+        },
+      ),
+
+      const SizedBox(height: 12),
+      const Divider(color: AppColors.divider),
+      const SizedBox(height: 16),
+
+      // --- Academic Registration ---
+      _buildSectionHeader("Academic Registration"),
+      _buildGridMenu([
+        _MenuOption("Search Catalog", Icons.search),
+        _MenuOption("My Waitlists", Icons.hourglass_empty),
+        _MenuOption("Prerequisites", Icons.rule),
+        _MenuOption("Cart / Enroll", Icons.shopping_cart_outlined),
+      ]),
+
+      const SizedBox(height: 24),
+
+      // --- Financial Services ---
+      _buildSectionHeader("Financial Services"),
+      _buildGridMenu([
+        _MenuOption("Fee Payment", Icons.payment),
+        _MenuOption("Scholarships", Icons.school),
+        _MenuOption("Request Refund", Icons.money_off),
+        _MenuOption("Installments", Icons.calendar_month),
+      ]),
+
+      const SizedBox(height: 24),
+
+      // --- Academic Records ---
+      _buildSectionHeader("Academic Records"),
+      _buildGridMenu([
+        _MenuOption("Exam Results", Icons.pie_chart_outline),
+        _MenuOption("Transcripts", Icons.description_outlined),
+        _MenuOption("Library", Icons.menu_book),
+        _MenuOption("Certificates", Icons.workspace_premium),
+      ]),
+
+      const SizedBox(height: 24),
+
+      // --- Learning Management ---
+      _buildSectionHeader("Learning Management"),
+      _buildGridMenu([
+        _MenuOption("Assignments", Icons.upload_file),
+        _MenuOption("Course Materials", Icons.library_books),
+        _MenuOption("Discussions", Icons.forum_outlined),
+        _MenuOption("Grades & Rubrics", Icons.grade),
+      ]),
+
+      const SizedBox(height: 24),
+
+      // --- Campus Life ---
+      _buildSectionHeader("Campus Life"),
+      _buildGridMenu([
+        _MenuOption("Events", Icons.event),
+        _MenuOption("Bus Tracking", Icons.directions_bus),
+        _MenuOption("Cafeteria", Icons.fastfood_outlined),
+        _MenuOption("Clubs", Icons.groups_outlined),
+      ]),
+
+      const SizedBox(height: 40),
+    ];
+
     return RefreshIndicator(
-      onRefresh: () => context.read<CourseProvider>().fetchCourses(),
+      onRefresh: () async {
+        _animController.reset();
+        _animController.forward();
+        await context.read<CourseProvider>().fetchCourses();
+      },
       child: CustomScrollView(
         slivers: [
           // 1. Expanded Header
@@ -81,104 +261,17 @@ class _StudentHomeState extends State<StudentHome> {
             ),
           ),
 
-          // 2. Content
+          // 2. Animated Content Body
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // --- WORKING FEATURES ---
-                  _buildSectionHeader("Quick Actions"),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _BouncingButton(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const AttendanceScreen(),
-                              ),
-                            );
-                          },
-                          child: _buildActionBtn(
-                            Icons.camera_alt_outlined,
-                            "Mark Attendance",
-                            AppColors.primary,
-                            isDark: false,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _BouncingButton(
-                          onTap: () => _showPlaceholder("QR Scan Entry"),
-                          child: _buildActionBtn(
-                            Icons.qr_code_scanner,
-                            "Scan Entry",
-                            AppColors.surfaceElevated,
-                            isDark: true,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-                  _buildSectionHeader("Enrolled Courses"),
-                  Consumer<CourseProvider>(
-                    builder: (context, provider, _) {
-                      if (provider.isLoading) {
-                        return _buildShimmerCourseList();
-                      }
-                      if (provider.courses.isEmpty) {
-                        return _buildEmptyState("No courses enrolled yet.");
-                      }
-                      return Column(
-                        children: provider.courses
-                            .map(
-                              (course) => _BouncingButton(
-                                onTap: () {
-                                  _showPlaceholder(
-                                    "Course Details for ${course.code}",
-                                  );
-                                },
-                                child: _buildCourseCard(course),
-                              ),
-                            )
-                            .toList(),
-                      );
-                    },
-                  ),
-
-                  // --- DUMMY FEATURES ---
-                  const SizedBox(height: 12),
-                  const Divider(color: AppColors.divider),
-                  const SizedBox(height: 16),
-
-                  _buildSectionHeader("Academic Registration"),
-                  _buildGridMenu([
-                    _MenuOption("Search Catalog", Icons.search),
-                    _MenuOption("Waitlists", Icons.hourglass_empty),
-                    _MenuOption("Prerequisites", Icons.rule),
-                    _MenuOption("Cart / Enroll", Icons.shopping_cart_outlined),
-                  ]),
-
-                  const SizedBox(height: 24),
-
-                  _buildSectionHeader("Learning Management"),
-                  _buildGridMenu([
-                    _MenuOption("Assignments", Icons.upload_file),
-                    _MenuOption("Course Materials", Icons.library_books),
-                    _MenuOption("Discussions", Icons.forum_outlined),
-                    _MenuOption("Grades & Rubrics", Icons.grade),
-                  ]),
-
-                  // ... (Existing Grid Menus unchanged)
-                  const SizedBox(height: 40),
-                ],
+                children: contentWidgets
+                    .asMap()
+                    .entries
+                    .map((entry) => _buildAnimatedChild(entry.value, entry.key))
+                    .toList(),
               ),
             ),
           ),
@@ -209,7 +302,7 @@ class _StudentHomeState extends State<StudentHome> {
     );
   }
 
-  // --- EXISTING WIDGETS ---
+  // --- WIDGET BUILDERS ---
 
   Widget _buildSectionHeader(String title) {
     return Padding(
@@ -352,7 +445,7 @@ class _StudentHomeState extends State<StudentHome> {
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 2.2,
+        childAspectRatio: 2.2, // Maintain the compact aspect ratio from Code 2
       ),
       itemBuilder: (context, index) {
         final opt = options[index];
@@ -395,6 +488,7 @@ class _MenuOption {
   _MenuOption(this.title, this.icon);
 }
 
+// Reusable Bouncing Button Component
 class _BouncingButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;

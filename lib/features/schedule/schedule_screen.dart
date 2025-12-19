@@ -16,16 +16,32 @@ class ScheduleScreen extends StatefulWidget {
   State<ScheduleScreen> createState() => _ScheduleScreenState();
 }
 
-class _ScheduleScreenState extends State<ScheduleScreen> {
+class _ScheduleScreenState extends State<ScheduleScreen>
+    with SingleTickerProviderStateMixin {
   DateTime _selectedDate = DateTime.now();
   bool _isWeekView = false;
+  late AnimationController _animController;
 
   @override
   void initState() {
     super.initState();
+    // 1. Initialize Animation
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // 2. Start Animation & Fetch Data
+      _animController.forward();
       context.read<ScheduleProvider>().fetchSessions();
     });
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
   }
 
   void _showPlaceholder(String feature) {
@@ -41,6 +57,33 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   DateTime _getStartOfWeek(DateTime date) {
     return date.subtract(Duration(days: date.weekday - 1));
+  }
+
+  // 3. Animation Helper
+  Widget _buildAnimatedChild(Widget child, int index) {
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (context, child) {
+        final double start = (index * 0.05).clamp(0.0, 1.0);
+        final double end = (start + 0.4).clamp(0.0, 1.0);
+        final curve = CurvedAnimation(
+          parent: _animController,
+          curve: Interval(start, end, curve: Curves.easeOutQuart),
+        );
+
+        return FadeTransition(
+          opacity: curve,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.2), // Float up from bottom
+              end: Offset.zero,
+            ).animate(curve),
+            child: child!,
+          ),
+        );
+      },
+      child: child,
+    );
   }
 
   @override
@@ -62,130 +105,142 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ),
             )
           : null,
-      body: CustomScrollView(
-        slivers: [
-          // 1. Modern Header
-          SliverAppBar(
-            expandedHeight: 120.0,
-            pinned: true,
-            backgroundColor: AppColors.background,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
-              title: Text(
-                _isWeekView ? "Weekly Overview" : "Daily Schedule",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                  shadows: [Shadow(color: Colors.black45, blurRadius: 5)],
-                ),
-              ),
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.network(
-                    "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=1000&auto=format&fit=crop",
-                    fit: BoxFit.cover,
+      body: RefreshIndicator(
+        onRefresh: () async {
+          _animController.reset();
+          _animController.forward();
+          await context.read<ScheduleProvider>().fetchSessions();
+        },
+        child: CustomScrollView(
+          slivers: [
+            // 1. Modern Header
+            SliverAppBar(
+              expandedHeight: 120.0,
+              pinned: true,
+              backgroundColor: AppColors.background,
+              flexibleSpace: FlexibleSpaceBar(
+                titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
+                title: Text(
+                  _isWeekView ? "Weekly Overview" : "Daily Schedule",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    shadows: [Shadow(color: Colors.black45, blurRadius: 5)],
                   ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Colors.transparent, AppColors.background],
+                ),
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?q=80&w=1000&auto=format&fit=crop",
+                      fit: BoxFit.cover,
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, AppColors.background],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: Icon(
-                  _isWeekView
-                      ? Icons.view_agenda_outlined
-                      : Icons.calendar_view_week_outlined,
-                  color: Colors.white,
+                  ],
                 ),
-                tooltip: _isWeekView
-                    ? "Switch to Day View"
-                    : "Switch to Week View",
-                onPressed: () => setState(() => _isWeekView = !_isWeekView),
               ),
-              if (canEdit)
+              actions: [
                 IconButton(
-                  icon: const Icon(
-                    Icons.auto_awesome_outlined,
+                  icon: Icon(
+                    _isWeekView
+                        ? Icons.view_agenda_outlined
+                        : Icons.calendar_view_week_outlined,
                     color: Colors.white,
                   ),
-                  tooltip: "AI Auto-Schedule",
-                  onPressed: () => _handleGenerateTimetable(context),
+                  tooltip: _isWeekView
+                      ? "Switch to Day View"
+                      : "Switch to Week View",
+                  onPressed: () {
+                    setState(() => _isWeekView = !_isWeekView);
+                    // Re-trigger animation when switching views
+                    _animController.reset();
+                    _animController.forward();
+                  },
                 ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                onSelected: (value) => _showPlaceholder(value),
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: "Export iCal",
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.ios_share,
-                          size: 20,
-                          color: AppColors.textMedium,
-                        ),
-                        SizedBox(width: 12),
-                        Text("Export iCal"),
-                      ],
+                if (canEdit)
+                  IconButton(
+                    icon: const Icon(
+                      Icons.auto_awesome_outlined,
+                      color: Colors.white,
                     ),
+                    tooltip: "AI Auto-Schedule",
+                    onPressed: () => _handleGenerateTimetable(context),
                   ),
-                  if (canEdit) ...[
-                    const PopupMenuDivider(),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.white),
+                  onSelected: (value) => _showPlaceholder(value),
+                  itemBuilder: (context) => [
                     const PopupMenuItem(
-                      value: "Publish Schedule",
+                      value: "Export iCal",
                       child: Row(
                         children: [
                           Icon(
-                            Icons.publish,
+                            Icons.ios_share,
                             size: 20,
                             color: AppColors.textMedium,
                           ),
                           SizedBox(width: 12),
-                          Text("Publish"),
+                          Text("Export iCal"),
                         ],
                       ),
                     ),
+                    if (canEdit) ...[
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: "Publish Schedule",
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.publish,
+                              size: 20,
+                              color: AppColors.textMedium,
+                            ),
+                            SizedBox(width: 12),
+                            Text("Publish"),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            ],
-          ),
-
-          // 2. Date Strip (Day View Only)
-          if (!_isWeekView)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _buildDateStrip(),
-              ),
+                ),
+              ],
             ),
 
-          // 3. Content
-          if (schedule.isLoading)
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) => _buildShimmerTimelineItem(),
-                  childCount: 5,
+            // 2. Date Strip (Day View Only)
+            if (!_isWeekView)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _buildDateStrip(),
                 ),
               ),
-            )
-          else if (_isWeekView)
-            _buildWeekView(schedule)
-          else
-            _buildDayView(schedule),
-        ],
+
+            // 3. Content
+            if (schedule.isLoading)
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => _buildShimmerTimelineItem(),
+                    childCount: 5,
+                  ),
+                ),
+              )
+            else if (_isWeekView)
+              _buildWeekView(schedule)
+            else
+              _buildDayView(schedule),
+          ],
+        ),
       ),
     );
   }
@@ -199,7 +254,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Time Column
             SizedBox(
               width: 55,
               child: Column(
@@ -211,7 +265,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ],
               ),
             ),
-            // Timeline Line
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
@@ -228,7 +281,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ],
               ),
             ),
-            // Card Content
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 24),
@@ -248,7 +300,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   // --- DAY VIEW WIDGETS ---
-
   Widget _buildDayView(ScheduleProvider schedule) {
     final sessions = schedule.getSessionsForDate(_selectedDate);
 
@@ -265,7 +316,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         delegate: SliverChildBuilderDelegate((context, index) {
           final session = sessions[index];
           final isLast = index == sessions.length - 1;
-          return _buildTimelineSessionItem(session, isLast);
+          // Wrap with animation
+          return _buildAnimatedChild(
+            _buildTimelineSessionItem(session, isLast),
+            index,
+          );
         }, childCount: sessions.length),
       ),
     );
@@ -273,12 +328,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Widget _buildTimelineSessionItem(ClassSession session, bool isLast) {
     Color typeColor = Colors.blueAccent;
-    if (session.type.toLowerCase().contains("lab"))
+    if (session.type.toLowerCase().contains("lab")) {
       typeColor = Colors.purpleAccent;
-    if (session.type.toLowerCase().contains("exam"))
+    }
+    if (session.type.toLowerCase().contains("exam")) {
       typeColor = Colors.redAccent;
-    if (session.type.toLowerCase().contains("seminar"))
+    }
+    if (session.type.toLowerCase().contains("seminar")) {
       typeColor = Colors.orangeAccent;
+    }
 
     return IntrinsicHeight(
       child: Row(
@@ -467,7 +525,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   // --- WEEK VIEW WIDGETS ---
-
   Widget _buildWeekView(ScheduleProvider schedule) {
     final startOfWeek = _getStartOfWeek(_selectedDate);
 
@@ -481,7 +538,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               DateFormat.yMd().format(currentDate) ==
               DateFormat.yMd().format(DateTime.now());
 
-          return Column(
+          final dayWidget = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
@@ -550,13 +607,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 const Divider(color: AppColors.divider, height: 32),
             ],
           );
+
+          // Wrap the entire day block in animation
+          return _buildAnimatedChild(dayWidget, index);
         }, childCount: 7),
       ),
     );
   }
 
   // --- SHARED WIDGETS ---
-
   Widget _buildDateStrip() {
     return SizedBox(
       height: 90,
@@ -572,7 +631,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               date.year == _selectedDate.year;
 
           return GestureDetector(
-            onTap: () => setState(() => _selectedDate = date),
+            onTap: () {
+              setState(() => _selectedDate = date);
+              // Slight re-trigger to animate the new day's list content
+              _animController.reset();
+              _animController.forward();
+            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               curve: Curves.easeOutCubic,

@@ -12,7 +12,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _opacity;
 
@@ -23,9 +24,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+    _opacity = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
 
     _controller.forward();
 
@@ -40,7 +42,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     // Wait for animation slightly
     await Future.delayed(const Duration(seconds: 2));
     await authProvider.checkSession();
-    
+
     if (!mounted) return;
 
     if (authProvider.status == AuthStatus.authenticated) {
@@ -48,7 +50,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         context,
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => const MainWrapper(),
-          transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
+          transitionsBuilder: (_, a, __, c) =>
+              FadeTransition(opacity: a, child: c),
         ),
       );
     } else {
@@ -56,7 +59,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         context,
         PageRouteBuilder(
           pageBuilder: (_, __, ___) => const LoginScreen(),
-          transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
+          transitionsBuilder: (_, a, __, c) =>
+              FadeTransition(opacity: a, child: c),
         ),
       );
     }
@@ -69,6 +73,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
@@ -78,13 +83,22 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Ensure you have assets/logo.svg
-              SvgPicture.asset(
-                'assets/logo.svg',
-                width: 120,
-                height: 120,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 46.0),
+                child: SvgPicture.asset('assets/logo.svg', height: 120),
               ),
-              const SizedBox(height: 20),
-              const CircularProgressIndicator(),
+              const SizedBox(height: 10), // Increased spacing slightly
+              // --- CHANGED TO LINEAR INDICATOR ---
+              SizedBox(
+                width: 200, // Constrain width to look good under the logo
+                child: LinearProgressIndicator(
+                  minHeight: 6, // Slightly thicker for better visibility
+                  borderRadius: BorderRadius.circular(10), // Rounded corners
+                  // You can customize colors here if needed:
+                  // backgroundColor: Colors.grey[300],
+                  // color: Theme.of(context).primaryColor,
+                ),
+              ),
             ],
           ),
         ),
