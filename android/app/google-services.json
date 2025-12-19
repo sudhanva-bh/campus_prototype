@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "563120657156",
+    "project_id": "campus-prototype-backend",
+    "storage_bucket": "campus-prototype-backend.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:563120657156:android:54fb0319e2b1e2b91cb651",
+        "android_client_info": {
+          "package_name": "com.example.campus_gemini_2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGkm3O5p-WZejhdsw3h2U3mG_Or9rkWE8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:563120657156:android:1f9f0ff8e49a9af51cb651",
+        "android_client_info": {
+          "package_name": "com.example.campus_prototype"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGkm3O5p-WZejhdsw3h2U3mG_Or9rkWE8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:563120657156:android:b08e97a52dab11121cb651",
+        "android_client_info": {
+          "package_name": "com.example.campus_prototype_gemini"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGkm3O5p-WZejhdsw3h2U3mG_Or9rkWE8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
