@@ -8,4 +8,9 @@ class ApiConstants {
   
   // System
   static const String healthEndpoint = "$baseUrl/health";
+
+  // Courses
+  static const String coursesEndpoint = "$baseUrl/api/courses";
+  static String courseDetailEndpoint(String id) => "$baseUrl/api/courses/$id";
+  static String enrollEndpoint(String id) => "$baseUrl/api/courses/$id/enroll";
 }
