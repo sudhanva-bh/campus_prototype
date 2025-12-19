@@ -17,4 +17,7 @@ class ApiConstants {
   // Schedule
   static const String sessionsEndpoint = "$baseUrl/api/schedule/sessions";
   static const String generateTimetableEndpoint = "$baseUrl/api/schedule/timetable";
+
+  // Attendance (New)
+  static const String attendanceVerifyEndpoint = "$baseUrl/api/attendance/verify";
 }

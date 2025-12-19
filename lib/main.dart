@@ -1,3 +1,4 @@
+import 'package:campus_gemini_2/providers/attendance_provider.dart';
 import 'package:campus_gemini_2/providers/schedule_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -26,6 +27,7 @@ class CampusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => CourseProvider()),
         ChangeNotifierProvider(create: (_) => ScheduleProvider()),
+        ChangeNotifierProvider(create: (_) => AttendanceProvider()),
       ],
       child: MaterialApp(
         title: 'Campus',

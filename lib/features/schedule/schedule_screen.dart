@@ -156,7 +156,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Widget _buildSessionCard(ClassSession session) {
     final duration = session.activeEndTime?.difference(session.activeStartTime!).inMinutes;
-    final timeFormat = DateFormat('h:mm a');
+    // final timeFormat = DateFormat('h:mm a');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

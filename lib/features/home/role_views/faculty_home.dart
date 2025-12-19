@@ -6,7 +6,7 @@ import '../../../core/models/course_model.dart';
 import '../../../core/models/session_model.dart';
 import '../../../providers/course_provider.dart';
 import '../../../providers/schedule_provider.dart';
-import '../../../providers/auth_provider.dart';
+// import '../../../providers/auth_provider.dart';
 import '../../courses/course_form_screen.dart';
 
 class FacultyHome extends StatefulWidget {
@@ -30,7 +30,7 @@ class _FacultyHomeState extends State<FacultyHome> {
   Widget build(BuildContext context) {
     final scheduleProvider = context.watch<ScheduleProvider>();
     final courseProvider = context.watch<CourseProvider>();
-    final authProvider = context.watch<AuthProvider>();
+    // final authProvider = context.watch<AuthProvider>();
 
     // 1. Calculate Stats
     final myCourses = courseProvider
