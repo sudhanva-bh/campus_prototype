@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../../providers/auth_provider.dart';
+import '../../core/constants/app_colors.dart';
 import 'role_views/student_home.dart';
 import 'role_views/faculty_home.dart';
 import 'role_views/admin_home.dart';
+import '../profile/profile_screen.dart'; // Import the new screen
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -16,20 +18,21 @@ class MainWrapper extends StatefulWidget {
 class _MainWrapperState extends State<MainWrapper> {
   int _currentIndex = 0;
 
-  // Generic pages for bottom nav tabs (to be implemented later)
-  final List<Widget> _placeholderTabs = [
-    const Center(child: Text("Schedule/Calendar")),
-    const Center(child: Text("Notifications")),
-    const Center(child: Text("Profile Settings")),
+  // Placeholder tabs for index 1 and 2
+  final List<Widget> _intermediateTabs = [
+    const Center(child: Text("Schedule/Calendar (Coming Soon)")),
+    const Center(child: Text("Notifications (Coming Soon)")),
   ];
 
   @override
   Widget build(BuildContext context) {
     final role = context.select((AuthProvider p) => p.userRole);
 
-    // Determine the main content based on Role
     Widget bodyContent;
+
+    // Logic to switch tabs
     if (_currentIndex == 0) {
+      // HOME TAB: varies by role
       switch (role) {
         case 'student':
           bodyContent = const StudentHome();
@@ -43,25 +46,22 @@ class _MainWrapperState extends State<MainWrapper> {
         default:
           bodyContent = const Center(child: Text("Unknown Role"));
       }
+    } else if (_currentIndex == 3) {
+      // PROFILE TAB: Index 3
+      bodyContent = const ProfileScreen();
     } else {
-      // Show placeholder tabs for other nav items
-      bodyContent = _placeholderTabs[_currentIndex - 1]; // -1 because index 0 is Home
+      // OTHER TABS
+      bodyContent = _intermediateTabs[_currentIndex - 1];
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: SvgPicture.asset('assets/logo.svg', height: 24),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-               context.read<AuthProvider>().logout();
-               Navigator.of(context).pushReplacementNamed('/');
-            },
-          )
-        ],
-      ),
+      appBar: _currentIndex == 0
+          ? AppBar(
+              title: SvgPicture.asset('assets/logo.svg', height: 24),
+              centerTitle: true,
+              automaticallyImplyLeading: false, // Hide back button
+            )
+          : null, // Hide AppBar on Profile as it has its own
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: bodyContent,

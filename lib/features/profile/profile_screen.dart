@@ -4,103 +4,215 @@ import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import 'edit_profile_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Fetch fresh data when entering the screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AuthProvider>().fetchProfile();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    // Access the user profile data stored in auth provider (you might need to add a getter there)
-    // For now, we'll assume we can get basic info or fetch it. 
-    // Ideally AuthProvider should cache the full user object.
-    
-    // Placeholder for actual user data access:
-    final user = auth.firebaseUser; 
-    final role = auth.userRole;
+    final user = auth.userProfile;
+
+    if (user == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Profile"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () async {
-              // Navigate to edit and wait for result to refresh if needed
-               await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const EditProfileScreen()),
-              );
-              // Trigger a refresh of profile data
-              if(context.mounted) auth.checkSession(); 
-            },
-          ),
-           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
-               auth.logout();
-               Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+              context.read<AuthProvider>().logout();
+              Navigator.of(
+                context,
+              ).pushNamedAndRemoveUntil('/', (route) => false);
             },
-          )
+          ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-             CircleAvatar(
-              radius: 60,
-              backgroundColor: AppColors.surfaceElevated,
-              backgroundImage: user?.photoURL != null ? NetworkImage(user!.photoURL!) : null,
-              child: user?.photoURL == null ? const Icon(Icons.person, size: 60, color: AppColors.textMedium) : null,
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.primary,
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EditProfileScreen(initialData: user),
             ),
-            const SizedBox(height: 24),
-            Text(
-              user?.displayName ?? "User Name",
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.primary),
+          );
+        },
+        child: const Icon(Icons.edit),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async => await auth.fetchProfile(),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 20),
+              // Avatar
+              CircleAvatar(
+                radius: 60,
+                backgroundColor: AppColors.surfaceElevated,
+                backgroundImage:
+                    (user['profile_photo_url'] != null &&
+                        user['profile_photo_url'].isNotEmpty)
+                    ? NetworkImage(user['profile_photo_url'])
+                    : null,
+                child:
+                    (user['profile_photo_url'] == null ||
+                        user['profile_photo_url'].isEmpty)
+                    ? Text(
+                        (user['first_name']?[0] ?? '') +
+                            (user['last_name']?[0] ?? ''),
+                        style: const TextStyle(
+                          fontSize: 40,
+                          color: AppColors.textMedium,
+                        ),
+                      )
+                    : null,
               ),
-              child: Text(
-                role?.toUpperCase() ?? "ROLE",
-                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+              const SizedBox(height: 24),
+
+              // Name & Role
+              Text(
+                "${user['first_name']} ${user['last_name']}",
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            const SizedBox(height: 40),
-            
-            _buildProfileItem(Icons.email_outlined, "Email", user?.email ?? "No Email"),
-            const Divider(color: AppColors.divider),
-            _buildProfileItem(Icons.badge_outlined, "User ID", user?.uid.substring(0,8) ?? "N/A"), // Just showing snippet of UID
-             const Divider(color: AppColors.divider),
-             // Add more fields here as you expand the user model in AuthProvider
-          ],
+              const SizedBox(height: 8),
+              Chip(
+                label: Text(
+                  (user['role'] ?? 'Unknown').toString().toUpperCase(),
+                ),
+                backgroundColor: AppColors.primaryVariant,
+                labelStyle: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Details Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailRow(
+                      Icons.email_outlined,
+                      "Email",
+                      user['email'],
+                    ),
+                    const Divider(height: 32, color: AppColors.divider),
+                    _buildDetailRow(
+                      Icons.business,
+                      "Institution",
+                      user['institution_id'],
+                    ),
+
+                    // Conditional Rendering based on Role
+                    if (user['role'] == 'student' &&
+                        user['student_info'] != null) ...[
+                      const Divider(height: 32, color: AppColors.divider),
+                      _buildDetailRow(
+                        Icons.badge_outlined,
+                        "Student ID",
+                        user['student_info']['student_id'],
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDetailRow(
+                        Icons.school_outlined,
+                        "Program",
+                        user['student_info']['program'],
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDetailRow(
+                        Icons.account_tree_outlined,
+                        "Department",
+                        user['student_info']['department'],
+                      ),
+                    ],
+
+                    if (user['role'] == 'faculty' &&
+                        user['faculty_info'] != null) ...[
+                      const Divider(height: 32, color: AppColors.divider),
+                      _buildDetailRow(
+                        Icons.work_outline,
+                        "Designation",
+                        user['faculty_info']['designation'],
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDetailRow(
+                        Icons.star_outline,
+                        "Specialization",
+                        user['faculty_info']['specialization'],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+              const Text(
+                "Pull down to refresh",
+                style: TextStyle(color: AppColors.textDisabled, fontSize: 12),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildProfileItem(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.textMedium, size: 28),
-          const SizedBox(width: 20),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(color: AppColors.textMedium, fontSize: 14)),
-              const SizedBox(height: 4),
-              Text(value, style: const TextStyle(color: AppColors.textHigh, fontSize: 16)),
-            ],
-          ),
-        ],
-      ),
+  Widget _buildDetailRow(IconData icon, String label, String? value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: AppColors.textMedium, size: 20),
+        const SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textDisabled,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value ?? "N/A",
+              style: const TextStyle(color: AppColors.textHigh, fontSize: 16),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
