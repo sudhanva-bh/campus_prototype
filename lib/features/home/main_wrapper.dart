@@ -6,7 +6,7 @@ import '../../providers/auth_provider.dart';
 import 'role_views/student_home.dart';
 import 'role_views/faculty_home.dart';
 import 'role_views/admin_home.dart';
-import '../profile/profile_screen.dart'; // Import the new screen
+import '../profile/profile_screen.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -18,7 +18,6 @@ class MainWrapper extends StatefulWidget {
 class _MainWrapperState extends State<MainWrapper> {
   int _currentIndex = 0;
 
-  // Placeholder tabs for index 1 and 2
   final List<Widget> _intermediateTabs = [
     const Center(child: Text("Schedule/Calendar (Coming Soon)")),
     const Center(child: Text("Notifications (Coming Soon)")),
@@ -30,9 +29,7 @@ class _MainWrapperState extends State<MainWrapper> {
 
     Widget bodyContent;
 
-    // Logic to switch tabs
     if (_currentIndex == 0) {
-      // HOME TAB: varies by role
       switch (role) {
         case 'student':
           bodyContent = const StudentHome();
@@ -47,24 +44,15 @@ class _MainWrapperState extends State<MainWrapper> {
           bodyContent = const Center(child: Text("Unknown Role"));
       }
     } else if (_currentIndex == 1) {
-      // SCHEDULE TAB: Index 1
-      bodyContent = const ScheduleScreen(); // Replaces placeholder
+      bodyContent = const ScheduleScreen();
     } else if (_currentIndex == 3) {
-      // PROFILE TAB: Index 3
       bodyContent = const ProfileScreen();
     } else {
-      // OTHER TABS
       bodyContent = _intermediateTabs[_currentIndex - 1];
     }
 
     return Scaffold(
-      appBar: _currentIndex == 0
-          ? AppBar(
-              title: SvgPicture.asset('assets/logo.svg', height: 24),
-              centerTitle: true,
-              automaticallyImplyLeading: false, // Hide back button
-            )
-          : null, // Hide AppBar on Profile as it has its own
+      // UPDATED: Removed AppBar to allow home screens to use SliverAppBar
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         child: bodyContent,

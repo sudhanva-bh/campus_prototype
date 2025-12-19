@@ -2,60 +2,138 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../providers/course_provider.dart';
+import '../../../providers/auth_provider.dart';
 import '../../courses/course_form_screen.dart';
-import '../../schedule/create_session_screen.dart'; // Import this
+import '../../schedule/create_session_screen.dart';
 
 class AdminHome extends StatelessWidget {
   const AdminHome({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text("Admin Console", style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: 20),
-        
-        _buildAdminOption(
-          context,
-          icon: Icons.add_box,
-          title: "Create New Course",
-          subtitle: "Define new curriculum entries",
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CourseFormScreen())),
-        ),
-        
-        // NEW: Linked to Schedule
-        _buildAdminOption(
-          context,
-          icon: Icons.calendar_month,
-          title: "Schedule Session",
-          subtitle: "Add classes to the master timetable",
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreateSessionScreen())),
+    final user = context.watch<AuthProvider>().userProfile;
+    final firstName = user?['first_name'] ?? 'Admin';
+
+    return CustomScrollView(
+      slivers: [
+        // 1. Sliver App Bar
+        SliverAppBar(
+          expandedHeight: 200.0,
+          pinned: true,
+          flexibleSpace: FlexibleSpaceBar(
+            title: Text(
+              "Welcome, $firstName",
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                shadows: [Shadow(color: Colors.black45, blurRadius: 2)],
+              ),
+            ),
+            background: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.network(
+                  "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1000&auto=format&fit=crop",
+                  fit: BoxFit.cover,
+                  errorBuilder: (c, e, s) =>
+                      Container(color: AppColors.surfaceElevated),
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.0),
+                        Colors.black.withOpacity(0.5),
+                        Colors.black.withOpacity(0.8),
+                      ],
+                      stops: const [0.0, 0.6, 0.85, 1.0],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
 
-        _buildAdminOption(
-          context,
-          icon: Icons.people_alt,
-          title: "Enroll Student",
-          subtitle: "Assign students to specific courses",
-          onTap: () => _showEnrollDialog(context),
+        // 2. Main Content
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Admin Console",
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+                const SizedBox(height: 20),
+
+                _buildAdminOption(
+                  context,
+                  icon: Icons.add_box,
+                  title: "Create New Course",
+                  subtitle: "Define new curriculum entries",
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CourseFormScreen()),
+                  ),
+                ),
+
+                _buildAdminOption(
+                  context,
+                  icon: Icons.calendar_month,
+                  title: "Schedule Session",
+                  subtitle: "Add classes to the master timetable",
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const CreateSessionScreen(),
+                    ),
+                  ),
+                ),
+
+                _buildAdminOption(
+                  context,
+                  icon: Icons.people_alt,
+                  title: "Enroll Student",
+                  subtitle: "Assign students to specific courses",
+                  onTap: () => _showEnrollDialog(context),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildAdminOption(BuildContext context, {required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
+  Widget _buildAdminOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
     return Card(
       color: AppColors.surface,
       margin: const EdgeInsets.only(bottom: 16),
       child: ListTile(
         leading: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: AppColors.surfaceElevated, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(8),
+          ),
           child: Icon(icon, color: AppColors.primary),
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle, style: const TextStyle(color: AppColors.textMedium)),
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(color: AppColors.textMedium),
+        ),
         onTap: onTap,
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       ),
@@ -73,23 +151,42 @@ class AdminHome extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(controller: courseIdCtrl, decoration: const InputDecoration(labelText: "Course ID (e.g. demo_..._CS101)")),
+            TextField(
+              controller: courseIdCtrl,
+              decoration: const InputDecoration(
+                labelText: "Course ID (e.g. demo_..._CS101)",
+              ),
+            ),
             const SizedBox(height: 12),
-            TextField(controller: studentIdCtrl, decoration: const InputDecoration(labelText: "Student ID (Firebase UID)")),
+            TextField(
+              controller: studentIdCtrl,
+              decoration: const InputDecoration(
+                labelText: "Student ID (Firebase UID)",
+              ),
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             onPressed: () async {
-              final success = await context.read<CourseProvider>().enrollStudent(
-                courseIdCtrl.text.trim(),
-                studentIdCtrl.text.trim(),
-              );
+              final success = await context
+                  .read<CourseProvider>()
+                  .enrollStudent(
+                    courseIdCtrl.text.trim(),
+                    studentIdCtrl.text.trim(),
+                  );
               if (ctx.mounted) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  SnackBar(content: Text(success ? "Enrolled Successfully" : "Enrollment Failed")),
+                  SnackBar(
+                    content: Text(
+                      success ? "Enrolled Successfully" : "Enrollment Failed",
+                    ),
+                  ),
                 );
               }
             },
