@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/models/session_model.dart';
 import '../../providers/schedule_provider.dart';
@@ -27,6 +29,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   void _showPlaceholder(String feature) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("$feature is coming soon!"),
@@ -89,10 +92,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          AppColors.background.withOpacity(0.95),
-                        ],
+                        colors: [Colors.transparent, AppColors.background],
                       ),
                     ),
                   ),
@@ -172,14 +172,77 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
           // 3. Content
           if (schedule.isLoading)
-            const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator()),
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => _buildShimmerTimelineItem(),
+                  childCount: 5,
+                ),
+              ),
             )
           else if (_isWeekView)
             _buildWeekView(schedule)
           else
             _buildDayView(schedule),
         ],
+      ),
+    );
+  }
+
+  // --- SHIMMER WIDGET ---
+  Widget _buildShimmerTimelineItem() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.surfaceElevated,
+      highlightColor: AppColors.surface,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Time Column
+            SizedBox(
+              width: 55,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Container(width: 40, height: 15, color: Colors.white),
+                  const SizedBox(height: 4),
+                  Container(width: 30, height: 10, color: Colors.white),
+                ],
+              ),
+            ),
+            // Timeline Line
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  Container(
+                    width: 14,
+                    height: 14,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  Expanded(child: Container(width: 2, color: Colors.white)),
+                ],
+              ),
+            ),
+            // Card Content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 24),
+                child: Container(
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -201,7 +264,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
           final session = sessions[index];
-          // Determine if this is the last item to handle the timeline line
           final isLast = index == sessions.length - 1;
           return _buildTimelineSessionItem(session, isLast);
         }, childCount: sessions.length),
@@ -209,9 +271,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  // --- NEW: Enhanced Timeline Session Item ---
   Widget _buildTimelineSessionItem(ClassSession session, bool isLast) {
-    // Determine color based on session type
     Color typeColor = Colors.blueAccent;
     if (session.type.toLowerCase().contains("lab"))
       typeColor = Colors.purpleAccent;
@@ -224,7 +284,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 1. Time Column
           SizedBox(
             width: 55,
             child: Column(
@@ -248,13 +307,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ],
             ),
           ),
-
-          // 2. Timeline Line
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Column(
               children: [
-                // Timeline Dot
                 Container(
                   width: 14,
                   height: 14,
@@ -271,7 +327,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     ],
                   ),
                 ),
-                // Timeline Line (Solid)
                 if (!isLast)
                   Expanded(
                     child: Container(
@@ -291,8 +346,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               ],
             ),
           ),
-
-          // 3. Card Content
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 24),
@@ -312,7 +365,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 clipBehavior: Clip.hardEdge,
                 child: Stack(
                   children: [
-                    // Accent Color Strip
                     Positioned(
                       left: 0,
                       top: 0,
@@ -489,10 +541,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       .map(
                         (s) => Padding(
                           padding: const EdgeInsets.only(bottom: 12),
-                          child: _buildTimelineSessionItem(
-                            s,
-                            true,
-                          ), // Reuse new card, simplified
+                          child: _buildTimelineSessionItem(s, true),
                         ),
                       )
                       .toList(),
@@ -649,6 +698,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           .read<ScheduleProvider>()
           .generateTimetable();
       if (context.mounted) {
+        ScaffoldMessenger.of(context).removeCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

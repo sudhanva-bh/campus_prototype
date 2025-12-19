@@ -63,7 +63,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     try {
       // 1. Capture Image
       final image = await _cameraController!.takePicture();
-      
+
       // 2. Convert to Base64 (Optional, if sending to API)
       // final bytes = await File(image.path).readAsBytes();
       // final base64Image = base64Encode(bytes);
@@ -73,7 +73,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       final success = await context.read<AttendanceProvider>().markAttendance(
         courseId: widget.courseId ?? "demo_course_001",
         sessionId: widget.sessionId ?? "demo_session_001",
-        // faceImageData: base64Image, 
+        // faceImageData: base64Image,
       );
 
       if (mounted) {
@@ -83,9 +83,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         });
 
         if (!success) {
+          ScaffoldMessenger.of(context).removeCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(context.read<AttendanceProvider>().error ?? "Verification Failed"),
+              content: Text(
+                context.read<AttendanceProvider>().error ??
+                    "Verification Failed",
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -102,7 +106,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        backgroundColor: Colors.transparent, 
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const BackButton(color: Colors.white),
       ),
@@ -111,24 +115,30 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           const SizedBox(height: 20),
           Text(
             _isSuccess ? "Attendance Marked" : "Verify Identity",
-            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
-            _isSuccess ? "You are checked in." : "Position your face within the frame",
+            _isSuccess
+                ? "You are checked in."
+                : "Position your face within the frame",
             style: const TextStyle(color: Colors.white70),
           ),
-          
+
           const Spacer(),
-          
+
           // Camera Preview
           Container(
             width: 300,
             height: 400,
             decoration: BoxDecoration(
               border: Border.all(
-                color: _isSuccess ? Colors.green : AppColors.primary, 
-                width: 4
+                color: _isSuccess ? Colors.green : AppColors.primary,
+                width: 4,
               ),
               borderRadius: BorderRadius.circular(20),
               color: Colors.grey[900],
@@ -137,12 +147,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               borderRadius: BorderRadius.circular(16),
               child: _isCameraInitialized
                   ? CameraPreview(_cameraController!)
-                  : const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                  : const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    ),
             ),
           ),
-          
+
           const Spacer(),
-          
+
           // Action Button
           Padding(
             padding: const EdgeInsets.all(32.0),
@@ -152,15 +166,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               child: _isSuccess
                   ? ElevatedButton(
                       onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                      ),
                       child: const Text("Done"),
                     )
                   : ElevatedButton(
-                      onPressed: (_isScanning || !_isCameraInitialized) ? null : _processFaceVerification,
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                      child: _isScanning 
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text("Scan Face"),
+                      onPressed: (_isScanning || !_isCameraInitialized)
+                          ? null
+                          : _processFaceVerification,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
+                      child: _isScanning
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text("Scan Face"),
                     ),
             ),
           ),

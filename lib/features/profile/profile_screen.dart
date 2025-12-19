@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import 'edit_profile_screen.dart';
@@ -26,6 +27,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showPlaceholder(String feature) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("$feature is coming soon!"),
@@ -40,8 +42,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final auth = context.watch<AuthProvider>();
     final user = auth.userProfile;
 
+    // Show shimmer if user data is null or loading
     if (user == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return _buildShimmerProfile();
     }
 
     return Scaffold(
@@ -88,7 +91,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               const SizedBox(height: 24),
 
-              // 3. Role Specific Details (Existing)
+              // 3. Role Specific Details
               if (user['role'] == 'student' &&
                   user['student_info'] != null) ...[
                 _buildSectionHeader("Academic Details"),
@@ -131,7 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               const SizedBox(height: 24),
 
-              // 4. NEW: Academic Records (MVP Requirement)
+              // 4. Academic Records
               _buildSectionHeader("Academic Records"),
               _buildInfoCard([
                 _buildClickableRow(
@@ -155,7 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               const SizedBox(height: 24),
 
-              // 5. NEW: Settings & Privacy (MVP Requirement)
+              // 5. Settings & Privacy
               _buildSectionHeader("Settings & Privacy"),
               _buildInfoCard([
                 _buildClickableRow(
@@ -208,6 +211,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
+
+  // --- SHIMMER WIDGET ---
+
+  Widget _buildShimmerProfile() {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        centerTitle: true,
+        title: const Text(
+          "My Profile",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+      ),
+      body: Shimmer.fromColors(
+        baseColor: AppColors.surfaceElevated,
+        highlightColor: AppColors.surface,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Header Shimmer
+              Container(
+                width: 100,
+                height: 100,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                width: 150,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: 80,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              const SizedBox(height: 32),
+
+              // Sections Shimmer
+              Column(
+                children: List.generate(
+                  3,
+                  (index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 20,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        Container(
+                          height: 150,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- EXISTING WIDGETS ---
 
   Widget _buildProfileHeader(Map<String, dynamic> user) {
     return Column(
@@ -347,7 +440,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // NEW: Clickable Row for features inside cards
   Widget _buildClickableRow(IconData icon, String label, VoidCallback onTap) {
     return _BouncingButton(
       onTap: onTap,
@@ -441,7 +533,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// Reusing BouncingButton
 class _BouncingButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;

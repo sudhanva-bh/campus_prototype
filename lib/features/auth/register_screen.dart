@@ -79,6 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             (route) => false,
           );
         } else if (auth.status == AuthStatus.error) {
+          ScaffoldMessenger.of(context).removeCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(auth.errorMessage ?? 'Registration failed'),

@@ -13,7 +13,7 @@ class CreateSessionScreen extends StatefulWidget {
 
 class _CreateSessionScreenState extends State<CreateSessionScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   String? _selectedCourseId;
   DateTime _date = DateTime.now();
   TimeOfDay _startTime = const TimeOfDay(hour: 9, minute: 0);
@@ -33,7 +33,10 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _selectedCourseId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
       return;
     }
 
@@ -41,10 +44,18 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
 
     // Combine Date + Time
     final startDateTime = DateTime(
-      _date.year, _date.month, _date.day, _startTime.hour, _startTime.minute
+      _date.year,
+      _date.month,
+      _date.day,
+      _startTime.hour,
+      _startTime.minute,
     );
     final endDateTime = DateTime(
-      _date.year, _date.month, _date.day, _endTime.hour, _endTime.minute
+      _date.year,
+      _date.month,
+      _date.day,
+      _endTime.hour,
+      _endTime.minute,
     );
 
     final success = await context.read<ScheduleProvider>().createSession({
@@ -60,9 +71,15 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
     if (mounted) {
       if (success) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Session Created")));
+        ScaffoldMessenger.of(context).removeCurrentSnackBar();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Session Created")));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Failed to create session")));
+        ScaffoldMessenger.of(context).removeCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to create session")),
+        );
       }
     }
   }
@@ -85,7 +102,10 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                     value: _selectedCourseId,
                     hint: const Text("Select Course"),
                     items: courseProvider.courses.map((c) {
-                      return DropdownMenuItem(value: c.id, child: Text("${c.code} - ${c.name}"));
+                      return DropdownMenuItem(
+                        value: c.id,
+                        child: Text("${c.code} - ${c.name}"),
+                      );
                     }).toList(),
                     onChanged: (val) => setState(() => _selectedCourseId = val),
                     validator: (v) => v == null ? "Required" : null,
@@ -102,7 +122,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                   final d = await showDatePicker(
                     context: context,
                     initialDate: _date,
-                    firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                    firstDate: DateTime.now().subtract(
+                      const Duration(days: 30),
+                    ),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                   );
                   if (d != null) setState(() => _date = d);
@@ -118,7 +140,10 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       icon: Icons.access_time,
                       label: "Start: ${_startTime.format(context)}",
                       onTap: () async {
-                        final t = await showTimePicker(context: context, initialTime: _startTime);
+                        final t = await showTimePicker(
+                          context: context,
+                          initialTime: _startTime,
+                        );
                         if (t != null) setState(() => _startTime = t);
                       },
                     ),
@@ -129,7 +154,10 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
                       icon: Icons.access_time_filled,
                       label: "End: ${_endTime.format(context)}",
                       onTap: () async {
-                        final t = await showTimePicker(context: context, initialTime: _endTime);
+                        final t = await showTimePicker(
+                          context: context,
+                          initialTime: _endTime,
+                        );
                         if (t != null) setState(() => _endTime = t);
                       },
                     ),
@@ -141,11 +169,13 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
               // Room & Type
               TextFormField(
                 controller: _roomCtrl,
-                decoration: const InputDecoration(labelText: "Room Number (e.g. 304B)"),
+                decoration: const InputDecoration(
+                  labelText: "Room Number (e.g. 304B)",
+                ),
                 validator: (v) => v!.isEmpty ? "Required" : null,
               ),
               const SizedBox(height: 16),
-              
+
               DropdownButtonFormField<String>(
                 value: _type,
                 decoration: const InputDecoration(labelText: "Session Type"),
@@ -158,7 +188,9 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: _isLoading ? null : _submit,
-                child: _isLoading ? const CircularProgressIndicator() : const Text("Schedule Session"),
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text("Schedule Session"),
               ),
             ],
           ),
@@ -167,7 +199,11 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
     );
   }
 
-  Widget _buildPickerTile({required IconData icon, required String label, required VoidCallback onTap}) {
+  Widget _buildPickerTile({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),

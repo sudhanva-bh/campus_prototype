@@ -29,7 +29,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _saveProfile() async {
     setState(() => _isLoading = true);
-    
+
     final success = await context.read<AuthProvider>().updateProfile({
       "first_name": _firstNameCtrl.text.trim(),
       "last_name": _lastNameCtrl.text.trim(),
@@ -41,13 +41,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (mounted) {
       if (success) {
         Navigator.pop(context);
+        ScaffoldMessenger.of(context).removeCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Profile updated successfully")),
         );
       } else {
+        ScaffoldMessenger.of(context).removeCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(context.read<AuthProvider>().errorMessage ?? "Failed to update"),
+            content: Text(
+              context.read<AuthProvider>().errorMessage ?? "Failed to update",
+            ),
             backgroundColor: AppColors.primaryVariant,
           ),
         );
@@ -67,8 +71,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             CircleAvatar(
               radius: 50,
               backgroundColor: AppColors.surfaceElevated,
-              backgroundImage: _photoUrlCtrl.text.isNotEmpty ? NetworkImage(_photoUrlCtrl.text) : null,
-              child: _photoUrlCtrl.text.isEmpty ? const Icon(Icons.person, size: 50) : null,
+              backgroundImage: _photoUrlCtrl.text.isNotEmpty
+                  ? NetworkImage(_photoUrlCtrl.text)
+                  : null,
+              child: _photoUrlCtrl.text.isEmpty
+                  ? const Icon(Icons.person, size: 50)
+                  : null,
             ),
             const SizedBox(height: 20),
             TextField(
@@ -91,7 +99,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _saveProfile,
-                child: _isLoading ? const CircularProgressIndicator() : const Text("Save Changes"),
+                child: _isLoading
+                    ? const CircularProgressIndicator()
+                    : const Text("Save Changes"),
               ),
             ),
           ],

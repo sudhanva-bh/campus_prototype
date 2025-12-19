@@ -21,7 +21,10 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      await auth.login(_emailController.text.trim(), _passwordController.text.trim());
+      await auth.login(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
 
       if (mounted) {
         if (auth.status == AuthStatus.authenticated) {
@@ -30,6 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
             MaterialPageRoute(builder: (context) => const MainWrapper()),
           );
         } else if (auth.status == AuthStatus.error) {
+          ScaffoldMessenger.of(context).removeCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(auth.errorMessage ?? 'Login failed'),
@@ -43,7 +47,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLoading = context.watch<AuthProvider>().status == AuthStatus.authenticating;
+    final isLoading =
+        context.watch<AuthProvider>().status == AuthStatus.authenticating;
 
     return Scaffold(
       body: SafeArea(
@@ -65,17 +70,17 @@ class _LoginScreenState extends State<LoginScreen> {
                     "Welcome Back",
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textHigh,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textHigh,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     "Sign in to access your campus dashboard",
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textMedium,
-                        ),
+                      color: AppColors.textMedium,
+                    ),
                   ),
                   const SizedBox(height: 48),
                   TextFormField(
@@ -111,12 +116,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("Don't have an account? ", style: TextStyle(color: AppColors.textMedium)),
+                      const Text(
+                        "Don't have an account? ",
+                        style: TextStyle(color: AppColors.textMedium),
+                      ),
                       TextButton(
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterScreen(),
+                            ),
                           );
                         },
                         child: const Text("Register"),

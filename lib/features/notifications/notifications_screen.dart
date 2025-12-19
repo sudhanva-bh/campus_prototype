@@ -5,6 +5,7 @@ class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
 
   void _showPlaceholder(BuildContext context, String feature) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("$feature is coming soon!"),
@@ -21,10 +22,16 @@ class NotificationsScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: const Text("Notifications", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text(
+          "Notifications",
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.playlist_add_check, color: AppColors.textMedium),
+            icon: const Icon(
+              Icons.playlist_add_check,
+              color: AppColors.textMedium,
+            ),
             onPressed: () => _showPlaceholder(context, "Mark All Read"),
             tooltip: "Mark all as read",
           ),
@@ -41,7 +48,13 @@ class NotificationsScreen extends StatelessWidget {
           // Dummy "Today" Section
           const Padding(
             padding: EdgeInsets.only(bottom: 12, left: 4),
-            child: Text("Today", style: TextStyle(color: AppColors.textMedium, fontWeight: FontWeight.bold)),
+            child: Text(
+              "Today",
+              style: TextStyle(
+                color: AppColors.textMedium,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           _buildNotificationCard(
             context,
@@ -63,11 +76,17 @@ class NotificationsScreen extends StatelessWidget {
           ),
 
           const SizedBox(height: 24),
-          
+
           // Dummy "Earlier" Section
           const Padding(
             padding: EdgeInsets.only(bottom: 12, left: 4),
-            child: Text("Earlier", style: TextStyle(color: AppColors.textMedium, fontWeight: FontWeight.bold)),
+            child: Text(
+              "Earlier",
+              style: TextStyle(
+                color: AppColors.textMedium,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           _buildNotificationCard(
             context,
@@ -107,7 +126,9 @@ class NotificationsScreen extends StatelessWidget {
         color: isUnread ? AppColors.surfaceElevated : AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isUnread ? AppColors.primary.withOpacity(0.3) : AppColors.border,
+          color: isUnread
+              ? AppColors.primary.withOpacity(0.3)
+              : AppColors.border,
         ),
       ),
       child: ListTile(
@@ -131,12 +152,21 @@ class NotificationsScreen extends StatelessWidget {
                 ),
               ),
             ),
-            Text(time, style: const TextStyle(color: AppColors.textDisabled, fontSize: 12)),
+            Text(
+              time,
+              style: const TextStyle(
+                color: AppColors.textDisabled,
+                fontSize: 12,
+              ),
+            ),
           ],
         ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text(body, style: const TextStyle(color: AppColors.textMedium)),
+          child: Text(
+            body,
+            style: const TextStyle(color: AppColors.textMedium),
+          ),
         ),
         onTap: () => _showPlaceholder(context, "Notification Details"),
       ),

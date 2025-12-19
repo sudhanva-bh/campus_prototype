@@ -26,15 +26,17 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
     _nameCtrl = TextEditingController(text: widget.course?.name ?? '');
     _codeCtrl = TextEditingController(text: widget.course?.code ?? '');
     _descCtrl = TextEditingController(text: widget.course?.description ?? '');
-    _creditsCtrl = TextEditingController(text: widget.course?.credits.toString() ?? '3');
+    _creditsCtrl = TextEditingController(
+      text: widget.course?.credits.toString() ?? '3',
+    );
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
     final provider = context.read<CourseProvider>();
-    
+
     final data = {
       'name': _nameCtrl.text.trim(),
       'code': _codeCtrl.text.trim(),
@@ -55,8 +57,12 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
       if (success) {
         Navigator.pop(context);
       } else {
+        ScaffoldMessenger.of(context).removeCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Operation failed"), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text("Operation failed"),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -65,7 +71,9 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.course == null ? "Create Course" : "Edit Course")),
+      appBar: AppBar(
+        title: Text(widget.course == null ? "Create Course" : "Edit Course"),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -74,7 +82,9 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
             children: [
               TextFormField(
                 controller: _codeCtrl,
-                decoration: const InputDecoration(labelText: "Course Code (e.g. CS101)"),
+                decoration: const InputDecoration(
+                  labelText: "Course Code (e.g. CS101)",
+                ),
                 validator: (v) => v!.isEmpty ? "Required" : null,
               ),
               const SizedBox(height: 16),
@@ -100,7 +110,9 @@ class _CourseFormScreenState extends State<CourseFormScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
-                  child: _isLoading ? const CircularProgressIndicator() : const Text("Save Course"),
+                  child: _isLoading
+                      ? const CircularProgressIndicator()
+                      : const Text("Save Course"),
                 ),
               ),
             ],

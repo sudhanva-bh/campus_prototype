@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/course_model.dart';
 import '../../../core/models/session_model.dart';
@@ -27,6 +29,7 @@ class _FacultyHomeState extends State<FacultyHome> {
   }
 
   void _showPlaceholder(String featureName) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("Feature '$featureName' is under development."),
@@ -41,6 +44,8 @@ class _FacultyHomeState extends State<FacultyHome> {
     final courseProvider = context.watch<CourseProvider>();
     final user = context.watch<AuthProvider>().userProfile;
     final firstName = user?['first_name'] ?? 'Faculty';
+
+    final isLoading = courseProvider.isLoading || scheduleProvider.isLoading;
 
     // 1. Calculate Stats
     final myCourses = courseProvider.courses;
@@ -105,8 +110,7 @@ class _FacultyHomeState extends State<FacultyHome> {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.black.withOpacity(0.1),
-                            Colors.black.withOpacity(0.6),
-                            Colors.black,
+                            AppColors.background,
                           ],
                         ),
                       ),
@@ -125,25 +129,28 @@ class _FacultyHomeState extends State<FacultyHome> {
                     // --- WORKING FEATURES ---
 
                     // Stats Row
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _statCard(
-                            "Classes Today",
-                            "${todaysClasses.length}",
-                            Icons.calendar_today,
+                    if (isLoading)
+                      _buildShimmerStats()
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _statCard(
+                              "Classes Today",
+                              "${todaysClasses.length}",
+                              Icons.calendar_today,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _statCard(
-                            "Total Students",
-                            "$totalStudents",
-                            Icons.groups,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _statCard(
+                              "Total Students",
+                              "$totalStudents",
+                              Icons.groups,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                     const SizedBox(height: 24),
 
                     // Upcoming Class Card
@@ -156,126 +163,130 @@ class _FacultyHomeState extends State<FacultyHome> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.surfaceElevated,
-                            AppColors.surface,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppColors.primary.withOpacity(0.2),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+
+                    if (isLoading)
+                      _buildShimmerUpcomingCard()
+                    else
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.surfaceElevated,
+                              AppColors.surface,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                "Upcoming Session",
-                                style: TextStyle(
-                                  color: AppColors.primaryLight,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppColors.primary.withOpacity(0.2),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  "Upcoming Session",
+                                  style: TextStyle(
+                                    color: AppColors.primaryLight,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (upcomingSession != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      "ON TIME",
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            if (upcomingSession != null) ...[
+                              Text(
+                                upcomingSession.courseName,
+                                style: const TextStyle(
+                                  fontSize: 22,
                                   fontWeight: FontWeight.bold,
+                                  color: Colors.white,
                                 ),
                               ),
-                              if (upcomingSession != null)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.access_time,
+                                    size: 18,
+                                    color: AppColors.textMedium,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(4),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "${DateFormat('h:mm a').format(upcomingSession.activeStartTime!)} - ${upcomingSession.room}",
+                                    style: const TextStyle(
+                                      color: AppColors.textHigh,
+                                      fontSize: 16,
+                                    ),
                                   ),
-                                  child: const Text(
-                                    "ON TIME",
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.check_circle_outline,
+                                    color: Colors.white,
+                                  ),
+                                  label: const Text(
+                                    "Start Class & Attendance",
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                  onPressed: () =>
+                                      _showPlaceholder("Class Session Mode"),
+                                ),
+                              ),
+                            ] else ...[
+                              const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 16),
+                                  child: Text(
+                                    "No immediate classes scheduled.",
                                     style: TextStyle(
-                                      fontSize: 10,
-                                      color: AppColors.primary,
+                                      color: AppColors.textDisabled,
                                     ),
                                   ),
                                 ),
+                              ),
                             ],
-                          ),
-                          const SizedBox(height: 12),
-                          if (upcomingSession != null) ...[
-                            Text(
-                              upcomingSession.courseName,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.access_time,
-                                  size: 18,
-                                  color: AppColors.textMedium,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  "${DateFormat('h:mm a').format(upcomingSession.activeStartTime!)} - ${upcomingSession.room}",
-                                  style: const TextStyle(
-                                    color: AppColors.textHigh,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                ),
-                                icon: const Icon(
-                                  Icons.check_circle_outline,
-                                  color: Colors.white,
-                                ),
-                                label: const Text(
-                                  "Start Class & Attendance",
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                                onPressed: () =>
-                                    _showPlaceholder("Class Session Mode"),
-                              ),
-                            ),
-                          ] else ...[
-                            const Center(
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(vertical: 16),
-                                child: Text(
-                                  "No immediate classes scheduled.",
-                                  style: TextStyle(
-                                    color: AppColors.textDisabled,
-                                  ),
-                                ),
-                              ),
-                            ),
                           ],
-                        ],
+                        ),
                       ),
-                    ),
 
                     const SizedBox(height: 32),
 
@@ -297,7 +308,7 @@ class _FacultyHomeState extends State<FacultyHome> {
                       ],
                     ),
                     if (courseProvider.isLoading)
-                      const Center(child: LinearProgressIndicator())
+                      _buildShimmerCourseList()
                     else if (myCourses.isEmpty)
                       const Padding(
                         padding: EdgeInsets.all(16),
@@ -313,7 +324,6 @@ class _FacultyHomeState extends State<FacultyHome> {
                             _buildCourseTile(context, myCourses[i]),
                       ),
 
-                    // --- DUMMY FEATURES (MVP) ---
                     const SizedBox(height: 32),
                     const Divider(color: AppColors.divider),
                     const SizedBox(height: 16),
@@ -379,6 +389,74 @@ class _FacultyHomeState extends State<FacultyHome> {
       ),
     );
   }
+
+  // --- SHIMMER WIDGETS ---
+
+  Widget _buildShimmerStats() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.surfaceElevated,
+      highlightColor: AppColors.surface,
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerUpcomingCard() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.surfaceElevated,
+      highlightColor: AppColors.surface,
+      child: Container(
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerCourseList() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.surfaceElevated,
+      highlightColor: AppColors.surface,
+      child: Column(
+        children: List.generate(
+          3,
+          (index) => Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            height: 70,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- EXISTING HELPERS ---
 
   Widget _statCard(String label, String value, IconData icon) {
     return Container(
