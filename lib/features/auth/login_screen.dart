@@ -1,3 +1,4 @@
+import 'package:campus_gemini_2/features/auth/register_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
@@ -105,6 +106,22 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Text("Sign In"),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text("Don't have an account? ", style: TextStyle(color: AppColors.textMedium)),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const RegisterScreen()),
+                          );
+                        },
+                        child: const Text("Register"),
+                      ),
+                    ],
                   ),
                 ],
               ),
