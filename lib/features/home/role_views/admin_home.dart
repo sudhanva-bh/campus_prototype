@@ -36,7 +36,7 @@ class _AdminHomeState extends State<AdminHome> {
           pinned: true,
           backgroundColor: AppColors.background,
           flexibleSpace: FlexibleSpaceBar(
-            title: Text(
+            title: const Text(
               "Admin Console",
               style: TextStyle(
                 color: Colors.white,
@@ -47,7 +47,7 @@ class _AdminHomeState extends State<AdminHome> {
               fit: StackFit.expand,
               children: [
                 Image.network(
-                  "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?q=80&w=1000&auto=format&fit=crop",
+                  "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1000&auto=format&fit=crop",
                   fit: BoxFit.cover,
                 ),
                 Container(
@@ -153,6 +153,21 @@ class _AdminHomeState extends State<AdminHome> {
                         () => _showPlaceholder("Fee Reports"),
                       ),
                       _buildSquareBtn(
+                        "Scholarships",
+                        Icons.school,
+                        () => _showPlaceholder("Scholarship Management"),
+                      ), // Scholarship Management
+                      _buildSquareBtn(
+                        "Refunds",
+                        Icons.replay_circle_filled,
+                        () => _showPlaceholder("Refund Approvals"),
+                      ), // Refund Processing
+                      _buildSquareBtn(
+                        "Payment Plans",
+                        Icons.calendar_view_week,
+                        () => _showPlaceholder("Installment Config"),
+                      ), // Installment Plans
+                      _buildSquareBtn(
                         "Payroll",
                         Icons.payments,
                         () => _showPlaceholder("Payroll"),
@@ -223,7 +238,7 @@ class _AdminHomeState extends State<AdminHome> {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: AppColors.border),
+        side: const BorderSide(color: AppColors.border),
       ),
       child: InkWell(
         onTap: onTap,

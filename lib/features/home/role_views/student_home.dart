@@ -24,7 +24,6 @@ class _StudentHomeState extends State<StudentHome> {
   }
 
   void _showPlaceholder(String featureName) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text("$featureName module is coming soon!"),
@@ -70,12 +69,8 @@ class _StudentHomeState extends State<StudentHome> {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.4),
-                          Colors.black.withOpacity(0.9),
-                        ],
-                        stops: const [0.0, 0.6, 1.0],
+                        colors: [Colors.transparent, AppColors.background],
+                        stops: const [0.0, 0.95],
                       ),
                     ),
                   ),
@@ -93,6 +88,7 @@ class _StudentHomeState extends State<StudentHome> {
                 children: [
                   // --- WORKING FEATURES ---
                   _buildSectionHeader("Quick Actions"),
+                  SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
@@ -128,7 +124,7 @@ class _StudentHomeState extends State<StudentHome> {
                     ],
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _buildSectionHeader("Enrolled Courses"),
                   Consumer<CourseProvider>(
                     builder: (context, provider, _) {
@@ -156,12 +152,44 @@ class _StudentHomeState extends State<StudentHome> {
                   const Divider(color: AppColors.divider),
                   const SizedBox(height: 16),
 
-                  _buildSectionHeader("Academic Services"),
+                  _buildSectionHeader("Course Registration"),
+                  _buildGridMenu([
+                    _MenuOption("Search Catalog", Icons.search),
+                    _MenuOption("My Waitlists", Icons.hourglass_empty),
+                    _MenuOption(
+                      "Prerequisites",
+                      Icons.rule,
+                    ), // Prerequisite Validation
+                    _MenuOption("Cart", Icons.shopping_cart_outlined),
+                  ]),
+
+                  const SizedBox(height: 24),
+
+                  _buildSectionHeader("Financial Services"),
+                  _buildGridMenu([
+                    _MenuOption("Fee Payment", Icons.payment),
+                    _MenuOption(
+                      "Scholarships",
+                      Icons.school,
+                    ), // Scholarship Management
+                    _MenuOption(
+                      "Request Refund",
+                      Icons.money_off,
+                    ), // Refund Processing
+                    _MenuOption(
+                      "Installments",
+                      Icons.calendar_month,
+                    ), // Installment Plans
+                  ]),
+
+                  const SizedBox(height: 24),
+
+                  _buildSectionHeader("Academic Records"),
                   _buildGridMenu([
                     _MenuOption("Exam Results", Icons.pie_chart_outline),
-                    _MenuOption("Fee Payment", Icons.payment),
-                    _MenuOption("Library", Icons.menu_book),
                     _MenuOption("Transcripts", Icons.description_outlined),
+                    _MenuOption("Library", Icons.menu_book),
+                    _MenuOption("Certificates", Icons.workspace_premium),
                   ]),
 
                   const SizedBox(height: 24),
@@ -185,7 +213,7 @@ class _StudentHomeState extends State<StudentHome> {
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.only(bottom: 0),
       child: Text(
         title,
         style: const TextStyle(
@@ -239,7 +267,7 @@ class _StudentHomeState extends State<StudentHome> {
 
   Widget _buildCourseCard(Course course) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8, top: 12),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
@@ -298,7 +326,6 @@ class _StudentHomeState extends State<StudentHome> {
           color: AppColors.textDisabled,
         ),
         onTap: () {
-          // Navigate to Course Details if implemented, else show snackbar
           _showPlaceholder("Course Details for ${course.code}");
         },
       ),
