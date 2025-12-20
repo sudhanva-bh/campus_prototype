@@ -91,15 +91,15 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         color: Colors.blueAccent,
         isUnread: true,
       ),
-      _buildNotificationCard(
-        context,
-        title: "Fee Payment Reminder",
-        body: "Semester 2 fees are due by Dec 25th.",
-        time: "2 hours ago",
-        icon: Icons.payment,
-        color: Colors.orangeAccent,
-        isUnread: true,
-      ),
+      // _buildNotificationCard(
+      //   context,
+      //   title: "Fee Payment Reminder",
+      //   body: "Semester 2 fees are due by Dec 25th.",
+      //   time: "2 hours ago",
+      //   icon: Icons.payment,
+      //   color: Colors.orangeAccent,
+      //   isUnread: true,
+      // ),
 
       const SizedBox(height: 24),
 

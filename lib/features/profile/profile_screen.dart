@@ -156,26 +156,26 @@ class _ProfileScreenState extends State<ProfileScreen>
       const SizedBox(height: 24),
 
       // Academic Records
-      _buildSectionHeader("Academic Records"),
-      _buildInfoCard([
-        _buildClickableRow(
-          Icons.description_outlined,
-          "Transcripts",
-          () => _showPlaceholder("Transcript Download"),
-        ),
-        _buildDivider(),
-        _buildClickableRow(
-          Icons.workspace_premium_outlined,
-          "Certificates",
-          () => _showPlaceholder("Certificates"),
-        ),
-        _buildDivider(),
-        _buildClickableRow(
-          Icons.history_edu,
-          "Enrollment History",
-          () => _showPlaceholder("Enrollment History"),
-        ),
-      ]),
+      // _buildSectionHeader("Academic Records"),
+      // _buildInfoCard([
+      //   _buildClickableRow(
+      //     Icons.description_outlined,
+      //     "Transcripts",
+      //     () => _showPlaceholder("Transcript Download"),
+      //   ),
+      //   _buildDivider(),
+      //   _buildClickableRow(
+      //     Icons.workspace_premium_outlined,
+      //     "Certificates",
+      //     () => _showPlaceholder("Certificates"),
+      //   ),
+      //   _buildDivider(),
+      //   _buildClickableRow(
+      //     Icons.history_edu,
+      //     "Enrollment History",
+      //     () => _showPlaceholder("Enrollment History"),
+      //   ),
+      // ]),
 
       const SizedBox(height: 24),
 

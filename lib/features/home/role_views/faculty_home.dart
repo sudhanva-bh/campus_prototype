@@ -324,15 +324,15 @@ class _FacultyHomeState extends State<FacultyHome>
     ];
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const CourseFormScreen()),
-        ),
-        label: const Text("New Course"),
-        icon: const Icon(Icons.add),
-      ),
+      // floatingActionButton: FloatingActionButton.extended(
+      //   backgroundColor: AppColors.primary,
+      //   onPressed: () => Navigator.push(
+      //     context,
+      //     MaterialPageRoute(builder: (_) => const CourseFormScreen()),
+      //   ),
+      //   label: const Text("New Course"),
+      //   icon: const Icon(Icons.add),
+      // ),
       body: RefreshIndicator(
         onRefresh: () async {
           _animController.reset();
@@ -511,13 +511,13 @@ class _FacultyHomeState extends State<FacultyHome>
           "${course.code} • ${course.enrolledStudents.length} Students",
           style: const TextStyle(color: AppColors.textMedium),
         ),
-        trailing: IconButton(
-          icon: const Icon(Icons.edit_note, color: AppColors.primary),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => CourseFormScreen(course: course)),
-          ),
-        ),
+        // trailing: IconButton(
+        //   icon: const Icon(Icons.edit_note, color: AppColors.primary),
+        //   onPressed: () => Navigator.push(
+        //     context,
+        //     MaterialPageRoute(builder: (_) => CourseFormScreen(course: course)),
+        //   ),
+        // ),
       ),
     );
   }
