@@ -40,8 +40,8 @@ class _SplashScreenState extends State<SplashScreen>
   void _checkAuth() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     // Wait for animation slightly
-    await Future.delayed(const Duration(seconds: 2));
     await authProvider.checkSession();
+    await Future.delayed(const Duration(milliseconds: 100));
 
     if (!mounted) return;
 

@@ -28,10 +28,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (mounted) {
         if (auth.status == AuthStatus.authenticated) {
+          await context.read<AuthProvider>().fetchProfile();
+          if(mounted){
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const MainWrapper()),
-          );
+          );}
         } else if (auth.status == AuthStatus.error) {
           ScaffoldMessenger.of(context).removeCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(

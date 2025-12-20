@@ -45,7 +45,6 @@ class _MainWrapperState extends State<MainWrapper> {
   @override
   Widget build(BuildContext context) {
     final role = context.select((AuthProvider p) => p.userRole);
-
     // Determine Home Screen
     Widget homeScreen;
     switch (role) {
@@ -63,10 +62,13 @@ class _MainWrapperState extends State<MainWrapper> {
     }
 
     // 3. Wrap pages in KeepAliveWrapper to save state (scroll position etc.)
-    final List<Widget> pages = [
+    final List<Widget> pages = (role!='admin')?[
       KeepAliveWrapper(child: homeScreen),
       const KeepAliveWrapper(child: ScheduleScreen()),
       const KeepAliveWrapper(child: NotificationsScreen()),
+      const KeepAliveWrapper(child: ProfileScreen()),
+    ]:[
+      KeepAliveWrapper(child: homeScreen),
       const KeepAliveWrapper(child: ProfileScreen()),
     ];
 
