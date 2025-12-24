@@ -1,13 +1,13 @@
-// lib/features/attendance/attendance_screen.dart
+import 'dart:io';
 
-import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/attendance_provider.dart';
 
 class AttendanceScreen extends StatefulWidget {
-  // You might want to pass the specific session ID here
   final String? sessionId;
   final String? courseId;
 
@@ -18,87 +18,89 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
-  CameraController? _cameraController;
-  bool _isCameraInitialized = false;
+  final ImagePicker _picker = ImagePicker();
+  File? _scannedImage;
   bool _isScanning = false;
   bool _isSuccess = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _initializeCamera();
-  }
-
-  Future<void> _initializeCamera() async {
-    final cameras = await availableCameras();
-    // Use front camera
-    final frontCamera = cameras.firstWhere(
-      (camera) => camera.lensDirection == CameraLensDirection.front,
-      orElse: () => cameras.first,
-    );
-
-    _cameraController = CameraController(
-      frontCamera,
-      ResolutionPreset.medium,
-      enableAudio: false,
-    );
-
-    await _cameraController!.initialize();
-    if (mounted) {
-      setState(() => _isCameraInitialized = true);
-    }
-  }
-
-  @override
-  void dispose() {
-    _cameraController?.dispose();
-    super.dispose();
-  }
-
   Future<void> _processFaceVerification() async {
-    if (!_isCameraInitialized || _cameraController == null) return;
-
     setState(() => _isScanning = true);
 
     try {
-      // 1. Capture Image
-      final image = await _cameraController!.takePicture();
-
-      // 2. Convert to Base64 (Optional, if sending to API)
-      // final bytes = await File(image.path).readAsBytes();
-      // final base64Image = base64Encode(bytes);
-
-      // 3. Call API Provider
-      // For prototype, we use hardcoded IDs if not provided
-      final success = await context.read<AttendanceProvider>().markAttendance(
-        courseId: widget.courseId ?? "demo_course_001",
-        sessionId: widget.sessionId ?? "demo_session_001",
-        // faceImageData: base64Image,
+      final XFile? rawImage = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
       );
 
-      if (mounted) {
-        setState(() {
-          _isScanning = false;
-          _isSuccess = success;
-        });
+      if (rawImage == null) {
+        setState(() => _isScanning = false);
+        return;
+      }
 
-        if (!success) {
-          ScaffoldMessenger.of(context).removeCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                context.read<AttendanceProvider>().error ??
-                    "Verification Failed",
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
+      final filePath = rawImage.path;
+      final lastIndex = filePath.lastIndexOf(new RegExp(r'.jp'));
+      final splitted = filePath.substring(0, (lastIndex));
+      final outPath = "${splitted}_out${filePath.substring(lastIndex)}";
+
+      final XFile? compressedImage = await FlutterImageCompress.compressAndGetFile(
+        rawImage.path,
+        outPath,
+        minWidth: 1024,
+        minHeight: 1364,
+        quality: 50,
+        rotate: 0,
+      );
+
+      if (compressedImage == null) {
+        throw Exception("Image compression failed");
+      }
+
+      final File imageFile = File(compressedImage.path);
+      setState(() => _scannedImage = imageFile);
+
+      final provider = context.read<AttendanceProvider>();
+
+      final isVerified = await provider.verifyFace(imageFile);
+
+      if (isVerified) {
+        final isMarked = await provider.markAttendance(
+          courseId: widget.courseId ?? "demo_course_001",
+          sessionId: widget.sessionId ?? "demo_session_001",
+          imageFile: imageFile,
+        );
+
+        if (mounted) {
+          setState(() {
+            _isScanning = false;
+            _isSuccess = isMarked;
+          });
+          if (!isMarked) {
+            _showError(provider.error ?? "Marking Attendance Failed");
+          }
+        }
+      } else {
+        if (mounted) {
+          setState(() => _isScanning = false);
+          _showError(provider.error ?? "Face Verification Failed");
         }
       }
     } catch (e) {
-      print("Camera Error: $e");
-      setState(() => _isScanning = false);
+      print("Camera/Compression Error: $e");
+      if (mounted) {
+        setState(() => _isScanning = false);
+        _showError("Error: $e");
+      }
     }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   @override
@@ -125,13 +127,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Text(
             _isSuccess
                 ? "You are checked in."
-                : "Position your face within the frame",
+                : "Capture a clear photo of your face",
             style: const TextStyle(color: Colors.white70),
           ),
 
           const Spacer(),
-
-          // Camera Preview
+          Text(
+            _isSuccess
+                ? ""
+                : "Marking Attendance for ${widget.courseId!}",
+            style: const TextStyle(color: Colors.white70),
+          ),
+          // Image Preview Area
           Container(
             width: 300,
             height: 400,
@@ -145,13 +152,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: _isCameraInitialized
-                  ? CameraPreview(_cameraController!)
+              child: _scannedImage != null
+                  ? Image.file(
+                _scannedImage!,
+                fit: BoxFit.cover,
+              )
                   : const Center(
-                      child: CircularProgressIndicator(
-                        color: AppColors.primary,
-                      ),
-                    ),
+                child: Icon(
+                  Icons.camera_alt,
+                  size: 64,
+                  color: Colors.white24,
+                ),
+              ),
             ),
           ),
 
@@ -165,23 +177,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               height: 56,
               child: _isSuccess
                   ? ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                      ),
-                      child: const Text("Done"),
-                    )
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                ),
+                child: const Text("Done"),
+              )
                   : ElevatedButton(
-                      onPressed: (_isScanning || !_isCameraInitialized)
-                          ? null
-                          : _processFaceVerification,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                      ),
-                      child: _isScanning
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text("Scan Face"),
-                    ),
+                onPressed: _isScanning ? null : _processFaceVerification,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                ),
+                child: _isScanning
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("Open Camera"),
+              ),
             ),
           ),
         ],

@@ -6,6 +6,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/course_model.dart';
 import '../../../core/models/session_model.dart';
+import '../../../providers/attendance_provider.dart';
 import '../../../providers/course_provider.dart';
 import '../../../providers/schedule_provider.dart';
 import '../../../providers/auth_provider.dart';
@@ -21,6 +22,8 @@ class FacultyHome extends StatefulWidget {
 class _FacultyHomeState extends State<FacultyHome>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
+  bool _isStartingSession = false;
+  bool _isSessionActive =false;
 
   @override
   void initState() {
@@ -30,10 +33,17 @@ class _FacultyHomeState extends State<FacultyHome>
       duration: const Duration(milliseconds: 1000),
     );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async{
       _animController.forward();
-      context.read<CourseProvider>().fetchCourses();
-      context.read<ScheduleProvider>().fetchSessions();
+      await Future.wait([
+        context.read<CourseProvider>().fetchCourses(),
+        context.read<ScheduleProvider>().fetchSessions(),
+      ]);
+
+      // 2. Call your separate function now that data is loaded
+      if (mounted) {
+        _checkUpcomingSessionStatus();
+      }
     });
   }
 
@@ -41,6 +51,63 @@ class _FacultyHomeState extends State<FacultyHome>
   void dispose() {
     _animController.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkUpcomingSessionStatus() async {
+    final scheduleProvider = context.read<ScheduleProvider>();
+    final courseProvider = context.read<CourseProvider>();
+
+    final now = DateTime.now();
+    final todaysClasses = scheduleProvider.getSessionsForDate(now);
+
+    todaysClasses.sort((a, b) =>
+        (a.activeStartTime ?? now).compareTo(b.activeStartTime ?? now)
+    );
+
+    try {
+      final upcoming = todaysClasses.firstWhere(
+            (s) => s.activeEndTime != null && s.activeEndTime!.isAfter(now),
+      );
+
+      final isActive = await courseProvider.isAttendanceActive(
+          upcoming.courseId,
+          upcoming.id
+      );
+
+      if (mounted) {
+        setState(() {
+          _isSessionActive = isActive;
+        });
+      }
+    } catch (e) {
+      // No upcoming session found; reset state if needed
+      if (mounted) {
+        setState(() {
+          _isSessionActive = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _endSession(String sessionId)async {
+    if(_isSessionActive && !_isStartingSession) {
+      setState(() {
+        _isStartingSession = true;
+      });
+      final today = DateTime.now();
+      final dateString = "${today.year.toString().padLeft(4, '0')}-"
+          "${today.month.toString().padLeft(2, '0')}-"
+          "${today.day.toString().padLeft(2, '0')}";
+      print("${sessionId}_$dateString");
+      final success = await context.read<AttendanceProvider>().closeSession(
+          sessionId: "${sessionId}_$dateString");
+      if (mounted){
+        await _checkUpcomingSessionStatus();
+        setState(() {
+          _isStartingSession = false;
+        });
+      }
+    }
   }
 
   void _showPlaceholder(String featureName) {
@@ -87,7 +154,6 @@ class _FacultyHomeState extends State<FacultyHome>
 
     final isLoading = courseProvider.isLoading || scheduleProvider.isLoading;
 
-    // 1. Calculate Stats
     final myCourses = courseProvider.courses;
     final totalStudents = myCourses.fold<int>(
       0,
@@ -95,7 +161,6 @@ class _FacultyHomeState extends State<FacultyHome>
     );
     final todaysClasses = scheduleProvider.getSessionsForDate(DateTime.now());
 
-    // 2. Find Upcoming Class
     ClassSession? upcomingSession;
     final now = DateTime.now();
     todaysClasses.sort(
@@ -237,15 +302,51 @@ class _FacultyHomeState extends State<FacultyHome>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                     ),
-                    icon: const Icon(
-                      Icons.check_circle_outline,
-                      color: Colors.white,
+                    icon: _isStartingSession 
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.check_circle_outline,
+                            color: Colors.white,
+                          ),
+                    label: Text(
+                      _isStartingSession ? "Processing..." : (!_isSessionActive)?"Start Class & Attendance":"End Session",
+                      style: const TextStyle(color: Colors.white),
                     ),
-                    label: const Text(
-                      "Start Class & Attendance",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    onPressed: () => _showPlaceholder("Class Session Mode"),
+                    onPressed: _isStartingSession || _isSessionActive
+                        ? () =>_endSession(upcomingSession!.id)
+                        : () async {
+                      setState(() => _isStartingSession = true);
+                      final success = await context
+                          .read<AttendanceProvider>()
+                          .startSession(
+                        courseId: upcomingSession!.courseId,
+                        classSessionId: upcomingSession!.id,
+                      );
+                      print("Attendance Started: $success");
+                      
+                      if (mounted) {
+                        await _checkUpcomingSessionStatus();
+                        setState(() {
+                         _isStartingSession = false;
+                         });
+                        if(success){
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Session Started')),
+                          );
+                        }else{
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Session Could not be Started / Already Started')),
+                          );
+                        }
+                      }
+                    }
                   ),
                 ),
               ] else ...[

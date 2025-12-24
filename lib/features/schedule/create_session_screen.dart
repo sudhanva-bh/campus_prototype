@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/schedule_provider.dart';
 import '../../providers/course_provider.dart';
 
@@ -40,6 +41,27 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
       return;
     }
 
+    final auth = context.read<AuthProvider>();
+    final profile = auth.userProfile;
+    final facultyId = profile?['user_id'] ?? profile?['userid'];
+
+    if (facultyId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Could not determine faculty id")),
+      );
+      return;
+    }
+
+    String formatDate(DateTime d) =>
+        "${d.year.toString().padLeft(4, '0')}-"
+            "${d.month.toString().padLeft(2, '0')}-"
+            "${d.day.toString().padLeft(2, '0')}";
+
+    String formatTime(DateTime dt) =>
+        "${dt.hour.toString().padLeft(2, '0')}:"
+            "${dt.minute.toString().padLeft(2, '0')}";
+
+
     setState(() => _isLoading = true);
 
     // Combine Date + Time
@@ -60,9 +82,14 @@ class _CreateSessionScreenState extends State<CreateSessionScreen> {
 
     final success = await context.read<ScheduleProvider>().createSession({
       "course_id": _selectedCourseId,
-      "start_time": startDateTime.toIso8601String(),
-      "end_time": endDateTime.toIso8601String(),
+      "day_of_week": startDateTime.weekday,
+      "start_date": formatDate(_date),
+      "end_date": formatDate(_date),
+      "start_time": formatTime(startDateTime),
+      "end_time": formatTime(endDateTime),
+      "faculty_id": facultyId,
       "room": _roomCtrl.text.trim(),
+      "recurring": false,
       "type": _type,
     });
 

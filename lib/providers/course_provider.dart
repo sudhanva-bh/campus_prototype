@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/api_constants.dart';
 import '../core/models/course_model.dart';
 
@@ -25,6 +26,76 @@ class CourseProvider extends ChangeNotifier {
     };
   }
 
+  Future<bool> isAttendanceActive(String cid, String sid) async {
+    try {
+      final headers = await _getHeaders();
+      Uri uri = Uri.parse(ApiConstants.attendanceActiveSessionEndpoint);
+      DateTime date = DateTime.now();
+      final dateStr = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+      uri = uri.replace(queryParameters: {'date': dateStr, 'course_id': cid});
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200 && response.body.isNotEmpty) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+
+        // 1. Check if "sessions" exists
+        if (data['sessions'] != null && (data['sessions'] as List).isNotEmpty) {
+          final List sessions = data['sessions'];
+          for (var session in sessions) {
+            if (session['session_id'].toString().startsWith(sid) && session['status'] == 'active') {
+              return true;
+            }
+          }
+          return false;
+        }
+      }
+      return false;
+    } catch (e) {
+      print("Error checking attendance status: $e");
+      return false;
+    }
+  }
+
+
+  Future<Map<String, String>?> identifyCurrentClass() async {
+    try {
+      final headers = await _getHeaders();
+      // Construct URI with query parameter if date is provided
+      DateTime date = DateTime.now();
+      Uri uri = Uri.parse(ApiConstants.attendanceActiveSessionEndpoint);
+        final dateStr = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+        uri = uri.replace(queryParameters: {'date': dateStr});
+
+      final response = await http.get(
+        uri,
+        headers: headers,
+      );
+      
+      if (response.statusCode == 200 && response.body.isNotEmpty) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+
+        // 1. Check if "sessions" exists and is not empty
+        if (data['sessions'] != null && (data['sessions'] as List).isNotEmpty) {
+
+          // 2. Access the first session in the list
+          final currentSession = data['sessions'][data['sessions'].length-1];
+          print(currentSession['status']);
+          if(currentSession['date'] == dateStr){
+          return {
+            'courseId': currentSession['course_id']?.toString() ?? '',
+            'sessionId': currentSession['session_id']?.toString() ?? '',
+          };}
+        } else {
+          print("No active sessions found in the list.");
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching session IDs: $e");
+    }
+    return null;
+  }
+
   // 1. Fetch All Courses (With Debug Prints)
   Future<void> fetchCourses() async {
     _isLoading = true;
@@ -35,24 +106,17 @@ class CourseProvider extends ChangeNotifier {
       final url = Uri.parse(ApiConstants.coursesEndpoint);
       final headers = await _getHeaders();
 
-      // --- DEBUG PRINT START ---
-      print("🔵 [API REQUEST] GET $url");
-      print("🔵 [HEADERS] $headers");
-      // --- DEBUG PRINT END ---
 
       final response = await http.get(url, headers: headers);
 
-      // --- DEBUG PRINT START ---
       print("🟢 [API RESPONSE] Status: ${response.statusCode}");
       print("🟢 [API RESPONSE] Body: ${response.body}");
-      // --- DEBUG PRINT END ---
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
         final List<dynamic> list;
 
-        // FIX: Check for 'courses' key specifically as seen in logs
         if (data is Map && data.containsKey('courses')) {
           list = data['courses'];
         } else if (data is Map && data.containsKey('data')) {
@@ -70,7 +134,6 @@ class CourseProvider extends ChangeNotifier {
         print("🔴 [API ERROR] $_error");
       }
     } catch (e, stackTrace) {
-      // Catch detailed error information
       print("🔴 [EXCEPTION] $e");
       print("🔴 [STACK TRACE] $stackTrace");
       _error = "Connection Error: $e";
@@ -79,9 +142,6 @@ class CourseProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  // ... (Keep existing createCourse, updateCourse, enrollStudent methods)
-  // Ensure you add similar print statements to those if they fail too.
 
   // 2. Create Course
   Future<bool> createCourse(Map<String, dynamic> courseData) async {

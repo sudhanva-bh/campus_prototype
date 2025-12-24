@@ -217,6 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           );
         },
       ),
+      SizedBox(height: 4,),
       const SizedBox(height: 12),
       _buildActionTile(
         icon: Icons.logout,

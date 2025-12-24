@@ -14,6 +14,8 @@ dependencies:
   http: ^1.1.0
   shared_preferences: ^2.2.0
   flutter_svg: ^2.0.7
+  image_picker: ^1.0.4
+  flutter_image_compress: ^2.3.0
 
   # Firebase (Required for Auth Persistence & Token Exchange)
   firebase_core: ^2.24.2

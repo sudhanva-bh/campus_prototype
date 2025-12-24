@@ -52,6 +52,23 @@ class ClassSession {
       return [];
     }
 
+    // Helper to normalize time strings (handle HH:mm and ISO formats)
+    String normalizeTime(dynamic val, String fallback) {
+       if (val is String && val.isNotEmpty) {
+          // If it looks like a full ISO date time (contains T)
+          if (val.contains('T')) {
+             try {
+                final dt = DateTime.parse(val);
+                return "${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}";
+             } catch(_) {
+               // Fallthrough if parse fails
+             }
+          }
+          return val;
+       }
+       return fallback;
+    }
+
     return ClassSession(
       id: json['session_id'] ?? json['id'] ?? '',
       courseId: json['course_id'] ?? '',
@@ -60,9 +77,9 @@ class ClassSession {
       type: json['type'] ?? 'Lecture',
       instructorId: json['faculty_id'] ?? '', // API uses 'faculty_id'
       
-      // Store raw time strings directly
-      startTimeStr: json['start_time'] ?? '09:00',
-      endTimeStr: json['end_time'] ?? '10:00',
+      // Store raw time strings directly, but normalized
+      startTimeStr: normalizeTime(json['start_time'], '09:00'),
+      endTimeStr: normalizeTime(json['end_time'], '10:00'),
       
       isRecurring: json['recurring'] ?? false,
       dayOfWeek: json['day_of_week'],
@@ -95,6 +112,9 @@ class ClassSession {
       final startParts = startTimeStr.split(':');
       final endParts = endTimeStr.split(':');
       
+      // Ensure we have at least HH:mm
+      if (startParts.length < 2 || endParts.length < 2) return null;
+
       final startDt = DateTime(
         date.year, date.month, date.day, 
         int.parse(startParts[0]), int.parse(startParts[1])
@@ -124,7 +144,7 @@ class ClassSession {
         activeEndTime: endDt,
       );
     } catch (e) {
-      print("Error resolving time for session $id: $e");
+      // print("Error resolving time for session $id: $e");
       return null;
     }
   }

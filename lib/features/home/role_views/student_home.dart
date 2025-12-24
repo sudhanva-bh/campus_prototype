@@ -17,8 +17,8 @@ class StudentHome extends StatefulWidget {
 
 class _StudentHomeState extends State<StudentHome>
     with SingleTickerProviderStateMixin {
-  // 1. Animation Controller
   late AnimationController _animController;
+  bool _isMarkingAttendance = false;
 
   @override
   void initState() {
@@ -54,7 +54,6 @@ class _StudentHomeState extends State<StudentHome>
     );
   }
 
-  // 2. Helper to animate items one by one
   Widget _buildAnimatedChild(Widget child, int index) {
     return AnimatedBuilder(
       animation: _animController,
@@ -100,17 +99,48 @@ class _StudentHomeState extends State<StudentHome>
         children: [
           Expanded(
             child: _BouncingButton(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AttendanceScreen()),
-                );
+              onTap: _isMarkingAttendance
+                  ? () {}
+                  : () async {
+                setState(() => _isMarkingAttendance = true);
+
+                try {
+                  final courseProvider = context.read<CourseProvider>();
+                  final activeCourse = await courseProvider.identifyCurrentClass();
+
+                  if (!mounted) return;
+
+                  if (activeCourse == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("No Active Sessions"),
+                        backgroundColor: AppColors.primary,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AttendanceScreen(
+                          courseId: activeCourse['courseId'],
+                          sessionId: activeCourse['sessionId'],
+                        ),
+                      ),
+                    );
+                  }
+                } finally {
+                  if (mounted) {
+                    setState(() => _isMarkingAttendance = false);
+                  }
+                }
               },
               child: _buildActionBtn(
                 Icons.camera_alt_outlined,
                 "Mark Attendance",
                 AppColors.primary,
                 isDark: false,
+                isLoading: _isMarkingAttendance,
               ),
             ),
           ),
@@ -324,6 +354,7 @@ class _StudentHomeState extends State<StudentHome>
     String label,
     Color color, {
     required bool isDark,
+    bool isLoading = false,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
@@ -340,7 +371,16 @@ class _StudentHomeState extends State<StudentHome>
       ),
       child: Column(
         children: [
-          Icon(
+          isLoading
+              ? SizedBox(
+            width: 32,
+            height: 32,
+            child: CircularProgressIndicator(
+              color: isDark ? AppColors.textHigh : Colors.white,
+              strokeWidth: 3,
+            ),
+          )
+              :Icon(
             icon,
             color: isDark ? AppColors.textHigh : Colors.white,
             size: 32,

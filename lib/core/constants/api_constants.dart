@@ -18,6 +18,14 @@ class ApiConstants {
   static const String sessionsEndpoint = "$baseUrl/api/schedule/sessions";
   static const String generateTimetableEndpoint = "$baseUrl/api/schedule/timetable";
 
-  // Attendance (New)
+  // Attendance
   static const String attendanceVerifyEndpoint = "$baseUrl/api/attendance/verify";
+  static const String attendanceStartSessionEndpoint =  "$baseUrl/api/attendance/sessions/start";
+  static const String attendanceActiveSessionEndpoint =  "$baseUrl/api/attendance/sessions/active";
+  static const String attendanceMarkEndpoint = "$baseUrl/api/attendance/mark";
+  static const String attendanceVerifyFaceEndpoint ="$baseUrl/api/attendance/verify-face";
+
+  static String closeSessionUrl(String sid){
+    return "$baseUrl/api/attendance/sessions/$sid/close";
+  }
 }
