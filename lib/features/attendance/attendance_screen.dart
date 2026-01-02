@@ -8,10 +8,9 @@ import '../../core/constants/app_colors.dart';
 import '../../providers/attendance_provider.dart';
 
 class AttendanceScreen extends StatefulWidget {
-  final String? sessionId;
-  final String? courseId;
+  final List<Map<String,String>?>? activeCourses;
 
-  const AttendanceScreen({super.key, this.sessionId, this.courseId});
+  const AttendanceScreen({super.key, this.activeCourses,});
 
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();
@@ -22,6 +21,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   File? _scannedImage;
   bool _isScanning = false;
   bool _isSuccess = false;
+  int _selectedIndex=0;
+  String get selectedCourseId => widget.activeCourses?[_selectedIndex]?['courseId'] ?? "demo_course_001";
+  String get selectedSessionId => widget.activeCourses?[_selectedIndex]?['sessionId'] ?? "demo_session_001";
 
   Future<void> _processFaceVerification() async {
     setState(() => _isScanning = true);
@@ -64,11 +66,10 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
       if (isVerified) {
         final isMarked = await provider.markAttendance(
-          courseId: widget.courseId ?? "demo_course_001",
-          sessionId: widget.sessionId ?? "demo_session_001",
+          courseId: widget.activeCourses![_selectedIndex]?['courseId'] ?? "demo_course_001",
+          sessionId: widget.activeCourses![_selectedIndex]?['sessionId'] ?? "demo_session_001",
           imageFile: imageFile,
         );
-
         if (mounted) {
           setState(() {
             _isScanning = false;
@@ -132,11 +133,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
 
           const Spacer(),
-          Text(
-            _isSuccess
-                ? ""
-                : "Marking Attendance for ${widget.courseId!}",
-            style: const TextStyle(color: Colors.white70),
+          Text("Marking Attendance For-",style: const TextStyle(color: Colors.white70)),
+          DropdownButton<int>(
+            value: _selectedIndex,
+            items: widget.activeCourses?.asMap().entries.map((entry) =>
+                DropdownMenuItem(value: entry.key, child: Text(entry.value?['courseId'] ?? 'Unknown'))
+            ).toList(),
+            onChanged: (value) => setState(() => _selectedIndex = value!),
           ),
           // Image Preview Area
           Container(

@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/models/session_model.dart';
+import '../../providers/course_provider.dart';
 import '../../providers/schedule_provider.dart';
 import '../../providers/auth_provider.dart';
 import 'create_session_screen.dart';
@@ -20,10 +21,11 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     with SingleTickerProviderStateMixin {
   DateTime _selectedDate = DateTime.now();
   bool _isWeekView = false;
+  List<dynamic>? _activeCourses;
   late AnimationController _animController;
 
   @override
-  void initState() {
+ void initState() {
     super.initState();
     // 1. Initialize Animation
     _animController = AnimationController(
@@ -36,8 +38,23 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       _animController.forward();
       context.read<ScheduleProvider>().fetchSessions();
     });
+    _fetchActiveCourses();
   }
+  Future<void> _fetchActiveCourses() async {
+    try {
+      final courseProvider = context.read<CourseProvider>();
+      final activeCourses = await courseProvider.identifyCurrentClass();
 
+      if (mounted) {
+        setState(() {
+          // Store activeCourses as class variable or use directly
+          _activeCourses = activeCourses;  // Add List<dynamic>? _activeCourses;
+        });
+      }
+    } catch (e) {
+      print("Failed to fetch active courses: $e");
+    }
+  }
   @override
   void dispose() {
     _animController.dispose();
@@ -109,6 +126,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         onRefresh: () async {
           _animController.reset();
           _animController.forward();
+          _fetchActiveCourses();
           await context.read<ScheduleProvider>().fetchSessions();
         },
         child: CustomScrollView(
@@ -327,6 +345,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   }
 
   Widget _buildTimelineSessionItem(ClassSession session, bool isLast) {
+    // print(session.id);
+    // for(int i=0;i<_activeCourses!.length;i++) {
+    //   print(_activeCourses!.elementAt(i)['sessionId']);
+    // }
     Color typeColor = Colors.blueAccent;
     if (session.type.toLowerCase().contains("lab")) {
       typeColor = Colors.purpleAccent;
@@ -469,10 +491,14 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                             session.courseName.isNotEmpty
                                 ? session.courseName
                                 : session.courseId,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.textHigh,
+                              color: (_activeCourses?.any((course) =>
+                              course['sessionId'] == "${session.id}_${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}") ?? true)
+                                  ? AppColors.primaryLight
+                                  : AppColors.textHigh,
+
                               height: 1.2,
                             ),
                           ),

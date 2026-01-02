@@ -102,6 +102,9 @@ class _FacultyHomeState extends State<FacultyHome>
       final success = await context.read<AttendanceProvider>().closeSession(
           sessionId: "${sessionId}_$dateString");
       if (mounted){
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Session Ended')),
+        );
         await _checkUpcomingSessionStatus();
         setState(() {
           _isStartingSession = false;

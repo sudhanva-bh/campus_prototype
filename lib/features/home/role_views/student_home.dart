@@ -1,3 +1,4 @@
+import 'package:campus_gemini_2/core/models/session_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
@@ -6,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/models/course_model.dart';
 import '../../../providers/course_provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/schedule_provider.dart';
 import '../../attendance/attendance_screen.dart';
 
 class StudentHome extends StatefulWidget {
@@ -19,6 +21,8 @@ class _StudentHomeState extends State<StudentHome>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   bool _isMarkingAttendance = false;
+  bool _isLoading =true;
+  List<ClassSession>? _upcomingClasses;
 
   @override
   void initState() {
@@ -34,7 +38,42 @@ class _StudentHomeState extends State<StudentHome>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _animController.forward();
       context.read<CourseProvider>().fetchCourses();
+      _checkUpcomingSessionStatus();
+
     });
+  }
+
+  Future<void> _checkUpcomingSessionStatus() async {
+    _isLoading=true;
+    final scheduleProvider = context.read<ScheduleProvider>();
+    final courseProvider = context.read<CourseProvider>();
+
+    final now = DateTime.now();
+    final todaysClasses = scheduleProvider.getSessionsForDate(now);
+
+    todaysClasses.sort((a, b) =>
+        (a.activeStartTime ?? now).compareTo(b.activeStartTime ?? now)
+    );
+
+    try {
+      _upcomingClasses = todaysClasses.where(
+            (s) => s.activeEndTime != null && s.activeEndTime!.isAfter(now),
+      ).toList();
+      if (mounted) {
+        setState(() {
+          print(_upcomingClasses);
+          print(_upcomingClasses!.length);          //_upcomingClasses is updated
+         });
+      }
+    } catch (e) {
+      // No upcoming session found; reset state if needed
+      if (mounted) {
+        setState(() {
+          print("error");
+        });
+      }
+    }
+    _isLoading=false;
   }
 
   @override
@@ -123,8 +162,7 @@ class _StudentHomeState extends State<StudentHome>
                       context,
                       MaterialPageRoute(
                         builder: (_) => AttendanceScreen(
-                          courseId: activeCourse['courseId'],
-                          sessionId: activeCourse['sessionId'],
+                          activeCourses: activeCourse,
                         ),
                       ),
                     );
@@ -161,7 +199,108 @@ class _StudentHomeState extends State<StudentHome>
 
       const SizedBox(height: 24),
 
+      // const Text(
+      //   "Live Status",
+      //   style: TextStyle(
+      //     color: AppColors.textDisabled,
+      //     fontSize: 12,
+      //     fontWeight: FontWeight.bold,
+      //   ),
+      // ),
+      _buildSectionHeader("Live Status"),
+      const SizedBox(height: 8),
+
+      if (_isLoading)
+        _buildShimmerUpcomingCard()
+      else
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [AppColors.surfaceElevated, AppColors.surface],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Upcoming Session",
+                    style: TextStyle(
+                      color: AppColors.primaryLight,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (_upcomingClasses != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        "ON TIME",
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (_upcomingClasses != null && _upcomingClasses!.isNotEmpty) ...[
+                Row(children: [
+                  Text(
+                    _upcomingClasses![0].courseName,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Spacer(),
+                  Text(_upcomingClasses![0].startTimeStr,style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),),
+                ],)
+              ] else ...[
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      "No immediate classes scheduled.",
+                      style: TextStyle(color: AppColors.textDisabled),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+
+
       // --- Enrolled Courses ---
+      const SizedBox(height: 20,),
       _buildSectionHeader("Enrolled Courses"),
       Consumer<CourseProvider>(
         builder: (context, provider, _) {
@@ -311,6 +450,22 @@ class _StudentHomeState extends State<StudentHome>
   }
 
   // --- SHIMMER WIDGETS ---
+
+  Widget _buildShimmerUpcomingCard() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.surfaceElevated,
+      highlightColor: AppColors.surface,
+      child: Container(
+        height: 150,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+    );
+  }
+
+
   Widget _buildShimmerCourseList() {
     return Shimmer.fromColors(
       baseColor: AppColors.surfaceElevated,

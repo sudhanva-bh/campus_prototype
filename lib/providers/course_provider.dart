@@ -58,7 +58,7 @@ class CourseProvider extends ChangeNotifier {
   }
 
 
-  Future<Map<String, String>?> identifyCurrentClass() async {
+  Future<List<Map<String, String>?>?> identifyCurrentClass() async {
     try {
       final headers = await _getHeaders();
       // Construct URI with query parameter if date is provided
@@ -78,14 +78,21 @@ class CourseProvider extends ChangeNotifier {
         // 1. Check if "sessions" exists and is not empty
         if (data['sessions'] != null && (data['sessions'] as List).isNotEmpty) {
 
-          // 2. Access the first session in the list
-          final currentSession = data['sessions'][data['sessions'].length-1];
-          print(currentSession['status']);
-          if(currentSession['date'] == dateStr){
-          return {
-            'courseId': currentSession['course_id']?.toString() ?? '',
-            'sessionId': currentSession['session_id']?.toString() ?? '',
-          };}
+          List<Map<String, String>> acList = [];
+          if (data['sessions'] != null) {
+            for (var session in data['sessions']) {
+              if (session != null &&
+                  session['course_id'] != null &&
+                  session['session_id'] != null) {
+                acList.add({
+                  'courseId': session['course_id'],
+                  'sessionId': session['session_id'],
+                });
+              }
+            }
+          }
+
+          return acList;
         } else {
           print("No active sessions found in the list.");
         }
