@@ -495,10 +495,9 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
                               color: (_activeCourses?.any((course) =>
-                              course['sessionId'] == "${session.id}_${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}") ?? true)
+                              course['sessionId'] == "${session.id}_${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}") ?? false)
                                   ? AppColors.primaryLight
                                   : AppColors.textHigh,
-
                               height: 1.2,
                             ),
                           ),

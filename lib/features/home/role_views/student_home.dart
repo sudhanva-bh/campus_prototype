@@ -39,7 +39,6 @@ class _StudentHomeState extends State<StudentHome>
       _animController.forward();
       context.read<CourseProvider>().fetchCourses();
       _checkUpcomingSessionStatus();
-
     });
   }
 
@@ -252,11 +251,11 @@ class _StudentHomeState extends State<StudentHome>
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.2),
+                        color: (_upcomingClasses== null || _upcomingClasses!.isEmpty) ?Colors.transparent:AppColors.primary.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text(
-                        "ON TIME",
+                      child: Text(
+                        (_upcomingClasses== null || _upcomingClasses!.isEmpty) ? "":"ON TIME",
                         style: TextStyle(
                           fontSize: 10,
                           color: AppColors.primary,

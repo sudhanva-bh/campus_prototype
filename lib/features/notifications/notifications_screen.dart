@@ -1,5 +1,13 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/models/session_model.dart';
+import '../../providers/course_provider.dart';
+import '../../providers/schedule_provider.dart';
+import 'package:provider/provider.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -11,6 +19,9 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
+  bool _isLoading =true;
+  List<ClassSession>? _upcomingClasses;
+
 
   @override
   void initState() {
@@ -22,14 +33,49 @@ class _NotificationsScreenState extends State<NotificationsScreen>
     // Start animation on load
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _animController.forward();
+      _checkUpcomingSessionStatus();
     });
   }
 
+
+  Future<void> _checkUpcomingSessionStatus() async {
+    _isLoading=true;
+    final scheduleProvider = context.read<ScheduleProvider>();
+    final courseProvider = context.read<CourseProvider>();
+
+    final now = DateTime.now();
+    final todaysClasses = scheduleProvider.getSessionsForDate(now);
+
+    todaysClasses.sort((a, b) =>
+        (a.activeStartTime ?? now).compareTo(b.activeStartTime ?? now)
+    );
+
+    try {
+      _upcomingClasses = todaysClasses.where(
+            (s) => s.activeEndTime != null && s.activeEndTime!.isAfter(now),
+      ).toList();
+      if (mounted) {
+        setState(() {
+          print(_upcomingClasses);
+          print(_upcomingClasses!.length);          //_upcomingClasses is updated
+        });
+      }
+    } catch (e) {
+      // No upcoming session found; reset state if needed
+      if (mounted) {
+        setState(() {
+          print("error");
+        });
+      }
+    }
+    _isLoading=false;
+  }
   @override
   void dispose() {
     _animController.dispose();
     super.dispose();
   }
+
 
   void _showPlaceholder(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).removeCurrentSnackBar();
@@ -82,15 +128,61 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           ),
         ),
       ),
-      _buildNotificationCard(
-        context,
-        title: "Upcoming Class: CS101",
-        body: "Lecture starts in 15 minutes at Room 304B.",
-        time: "10 mins ago",
-        icon: Icons.event,
-        color: Colors.blueAccent,
-        isUnread: true,
-      ),
+      if (_isLoading)
+        _buildShimmerNotificationList()
+      else if (_upcomingClasses != null && _upcomingClasses!.isNotEmpty)
+      // usage of spread operator (...) to insert the list of widgets
+        ..._upcomingClasses!.map((session) {
+
+          // Helper logic to format time (Modify based on your needs)
+          final startTime = session.activeStartTime;
+          final timeString = startTime != null
+              ? "${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}"
+              : "Soon";
+          return _buildNotificationCard(
+            context,
+            title: "Upcoming Class: ${session.courseName ?? 'Session'}",
+            body: "Lecture starts ${startTime==null?"soon": "at"} $timeString${session.room != null ? ' in room ${session.room}' : '.'}",
+            time: "Now",
+            icon: Icons.event,
+            color: Colors.blueAccent,
+            isUnread: true,
+          );
+        })
+      else
+      // Optional: Show a message if there are no classes today
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          decoration: BoxDecoration(
+            color: AppColors.surface.withOpacity(0.5),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.border,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                  Icons.check_circle_outline_rounded,
+                  color: AppColors.primaryLight,
+                  size: 20
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                "No Upcoming classes for today",
+                style: TextStyle(
+                  color: AppColors.textMedium,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
       // _buildNotificationCard(
       //   context,
       //   title: "Fee Payment Reminder",
@@ -227,6 +319,27 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           ),
         ),
         onTap: () => _showPlaceholder(context, "Notification Details"),
+      ),
+    );
+  }
+
+  Widget _buildShimmerNotificationList() {
+    return Shimmer.fromColors(
+      baseColor: AppColors.surfaceElevated,
+      highlightColor: AppColors.surface,
+      child: Column(
+        children: List.generate(
+          3,
+              (index) => Container(
+            margin: const EdgeInsets.only(bottom: 8, top: 12),
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+          ),
+        ),
       ),
     );
   }
