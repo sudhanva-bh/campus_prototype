@@ -1,11 +1,8 @@
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/session_model.dart';
-import '../../providers/course_provider.dart';
+// import '../../providers/course_provider.dart';
 import '../../providers/schedule_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -41,7 +38,7 @@ class _NotificationsScreenState extends State<NotificationsScreen>
   Future<void> _checkUpcomingSessionStatus() async {
     _isLoading=true;
     final scheduleProvider = context.read<ScheduleProvider>();
-    final courseProvider = context.read<CourseProvider>();
+    // final courseProvider = context.read<CourseProvider>();
 
     final now = DateTime.now();
     final todaysClasses = scheduleProvider.getSessionsForDate(now);
@@ -141,8 +138,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               : "Soon";
           return _buildNotificationCard(
             context,
-            title: "Upcoming Class: ${session.courseName ?? 'Session'}",
-            body: "Lecture starts ${startTime==null?"soon": "at"} $timeString${session.room != null ? ' in room ${session.room}' : '.'}",
+            title: "Upcoming Class: ${session.courseName}",
+            body: "Lecture starts ${startTime==null?"soon": "at"} $timeString${' in room ${session.room}'}",
             time: "Now",
             icon: Icons.event,
             color: Colors.blueAccent,

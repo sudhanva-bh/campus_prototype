@@ -8,6 +8,8 @@ import '../../core/models/session_model.dart';
 import '../../providers/course_provider.dart';
 import '../../providers/schedule_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/survey_provider.dart'; // Phase 2 Integration
+import '../../features/surveys/survey_screen.dart'; // Phase 2 Integration
 import 'create_session_screen.dart';
 
 class ScheduleScreen extends StatefulWidget {
@@ -25,7 +27,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   late AnimationController _animController;
 
   @override
- void initState() {
+  void initState() {
     super.initState();
     // 1. Initialize Animation
     _animController = AnimationController(
@@ -40,6 +42,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     });
     _fetchActiveCourses();
   }
+
   Future<void> _fetchActiveCourses() async {
     try {
       final courseProvider = context.read<CourseProvider>();
@@ -47,14 +50,14 @@ class _ScheduleScreenState extends State<ScheduleScreen>
 
       if (mounted) {
         setState(() {
-          // Store activeCourses as class variable or use directly
-          _activeCourses = activeCourses;  // Add List<dynamic>? _activeCourses;
+          _activeCourses = activeCourses;
         });
       }
     } catch (e) {
       print("Failed to fetch active courses: $e");
     }
   }
+
   @override
   void dispose() {
     _animController.dispose();
@@ -334,7 +337,6 @@ class _ScheduleScreenState extends State<ScheduleScreen>
         delegate: SliverChildBuilderDelegate((context, index) {
           final session = sessions[index];
           final isLast = index == sessions.length - 1;
-          // Wrap with animation
           return _buildAnimatedChild(
             _buildTimelineSessionItem(session, isLast),
             index,
@@ -345,10 +347,6 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   }
 
   Widget _buildTimelineSessionItem(ClassSession session, bool isLast) {
-    // print(session.id);
-    // for(int i=0;i<_activeCourses!.length;i++) {
-    //   print(_activeCourses!.elementAt(i)['sessionId']);
-    // }
     Color typeColor = Colors.blueAccent;
     if (session.type.toLowerCase().contains("lab")) {
       typeColor = Colors.purpleAccent;
@@ -359,6 +357,35 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     if (session.type.toLowerCase().contains("seminar")) {
       typeColor = Colors.orangeAccent;
     }
+
+    // --- Phase 2: Survey Logic ---
+    final now = DateTime.now();
+    // Assuming ClassSession has startTime/endTime DateTime objects.
+    // If only strings are available in your model, you may need DateTime.parse(session.startTimeStr)
+    final startTime =
+        session.activeStartTime ??
+        DateTime.tryParse(
+          "${DateFormat('yyyy-MM-dd').format(_selectedDate)} ${session.startTimeStr}",
+        ) ??
+        now;
+    final endTime =
+        session.activeEndTime ??
+        DateTime.tryParse(
+          "${DateFormat('yyyy-MM-dd').format(_selectedDate)} ${session.endTimeStr}",
+        ) ??
+        now.add(const Duration(hours: 1));
+
+    // Survey Window Logic
+    final isPreSession =
+        now.isAfter(startTime.subtract(const Duration(hours: 24))) &&
+        now.isBefore(startTime);
+    final isPostSession =
+        now.isAfter(endTime) &&
+        now.isBefore(endTime.add(const Duration(hours: 2)));
+    final showSurvey = isPreSession || isPostSession;
+    final surveyLabel = isPreSession
+        ? "Pre-Session Check-in"
+        : "Post-Session Feedback";
 
     return IntrinsicHeight(
       child: Row(
@@ -494,8 +521,13 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                             style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.bold,
-                              color: (_activeCourses?.any((course) =>
-                              course['sessionId'] == "${session.id}_${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}") ?? false)
+                              color:
+                                  (_activeCourses?.any(
+                                        (course) =>
+                                            course['sessionId'] ==
+                                            "${session.id}_${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}",
+                                      ) ??
+                                      false)
                                   ? AppColors.primaryLight
                                   : AppColors.textHigh,
                               height: 1.2,
@@ -512,6 +544,59 @@ class _ScheduleScreenState extends State<ScheduleScreen>
                               ),
                             ],
                           ),
+                          // --- Phase 2: Survey Button ---
+                          if (showSurvey) ...[
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                icon: Icon(
+                                  isPreSession
+                                      ? Icons.accessibility_new
+                                      : Icons.rate_review,
+                                  size: 16,
+                                ),
+                                label: Text(surveyLabel),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: isPreSession
+                                      ? Colors.blue
+                                      : Colors.blueAccent,
+                                  side: BorderSide(
+                                    color: isPreSession
+                                        ? Colors.blue.withOpacity(0.5)
+                                        : Colors.blueAccent.withOpacity(0.5),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  final provider = context
+                                      .read<SurveyProvider>();
+                                  final survey = await provider
+                                      .fetchActiveSurveyForSession(session.id);
+
+                                  if (survey != null && mounted) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            SurveyScreen(survey: survey),
+                                      ),
+                                    );
+                                  } else if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          "No survey available right now.",
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -543,10 +628,10 @@ class _ScheduleScreenState extends State<ScheduleScreen>
   }
 
   String _getDurationString(ClassSession session) {
-    final duration =
-        session.activeEndTime?.difference(session.activeStartTime!).inMinutes ??
-        60;
-    return "${duration}min";
+    if (session.activeEndTime != null && session.activeStartTime != null) {
+      return "${session.activeEndTime!.difference(session.activeStartTime!).inMinutes}min";
+    }
+    return "60min"; // Fallback
   }
 
   // --- WEEK VIEW WIDGETS ---
@@ -633,7 +718,6 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             ],
           );
 
-          // Wrap the entire day block in animation
           return _buildAnimatedChild(dayWidget, index);
         }, childCount: 7),
       ),
@@ -658,7 +742,6 @@ class _ScheduleScreenState extends State<ScheduleScreen>
           return GestureDetector(
             onTap: () {
               setState(() => _selectedDate = date);
-              // Slight re-trigger to animate the new day's list content
               _animController.reset();
               _animController.forward();
             },
