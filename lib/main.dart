@@ -8,7 +8,9 @@ import 'providers/course_provider.dart';
 import 'providers/schedule_provider.dart';
 import 'providers/attendance_provider.dart';
 import 'providers/career_provider.dart';
-import 'providers/survey_provider.dart'; // <--- 1. Import this
+import 'providers/survey_provider.dart';
+import 'providers/analytics_provider.dart';
+import 'providers/faculty_provider.dart'; // <--- NEW IMPORT
 import 'features/auth/splash_screen.dart';
 import 'firebase_options.dart';
 
@@ -32,8 +34,9 @@ class CampusApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ScheduleProvider()),
         ChangeNotifierProvider(create: (_) => AttendanceProvider()),
         ChangeNotifierProvider(create: (_) => CareerProvider()),
-        // 2. Register SurveyProvider here
         ChangeNotifierProvider(create: (_) => SurveyProvider()),
+        ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
+        ChangeNotifierProvider(create: (_) => FacultyProvider()),
       ],
       child: MaterialApp(
         title: 'Campus',

@@ -10,6 +10,7 @@ import '../../../providers/attendance_provider.dart';
 import '../../../providers/course_provider.dart';
 import '../../../providers/schedule_provider.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/faculty_provider.dart'; // <--- NEW IMPORT
 import '../../courses/course_form_screen.dart';
 
 class FacultyHome extends StatefulWidget {
@@ -23,7 +24,8 @@ class _FacultyHomeState extends State<FacultyHome>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   bool _isStartingSession = false;
-  bool _isSessionActive =false;
+  bool _isSessionActive = false;
+  ClassSession? _cachedUpcomingSession; // Cache to keep UI stable
 
   @override
   void initState() {
@@ -33,14 +35,13 @@ class _FacultyHomeState extends State<FacultyHome>
       duration: const Duration(milliseconds: 1000),
     );
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async{
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _animController.forward();
       await Future.wait([
         context.read<CourseProvider>().fetchCourses(),
         context.read<ScheduleProvider>().fetchSessions(),
       ]);
 
-      // 2. Call your separate function now that data is loaded
       if (mounted) {
         _checkUpcomingSessionStatus();
       }
@@ -56,23 +57,32 @@ class _FacultyHomeState extends State<FacultyHome>
   Future<void> _checkUpcomingSessionStatus() async {
     final scheduleProvider = context.read<ScheduleProvider>();
     final courseProvider = context.read<CourseProvider>();
+    final facultyProvider = context.read<FacultyProvider>(); // <--- PHASE 5
 
     final now = DateTime.now();
     final todaysClasses = scheduleProvider.getSessionsForDate(now);
 
-    todaysClasses.sort((a, b) =>
-        (a.activeStartTime ?? now).compareTo(b.activeStartTime ?? now)
+    todaysClasses.sort(
+      (a, b) => (a.activeStartTime ?? now).compareTo(b.activeStartTime ?? now),
     );
 
     try {
       final upcoming = todaysClasses.firstWhere(
-            (s) => s.activeEndTime != null && s.activeEndTime!.isAfter(now),
+        (s) => s.activeEndTime != null && s.activeEndTime!.isAfter(now),
       );
 
+      // Cache the session so we can use it in the UI even if logic re-runs
+      _cachedUpcomingSession = upcoming;
+
+      // Check if attendance is already running
       final isActive = await courseProvider.isAttendanceActive(
-          upcoming.courseId,
-          upcoming.id
+        upcoming.courseId,
+        upcoming.id,
       );
+
+      // --- PHASE 5: Fetch Pacing Intelligence ---
+      // We fetch this for any upcoming/active session to guide the faculty
+      facultyProvider.fetchPacing(upcoming.id);
 
       if (mounted) {
         setState(() {
@@ -80,37 +90,108 @@ class _FacultyHomeState extends State<FacultyHome>
         });
       }
     } catch (e) {
-      // No upcoming session found; reset state if needed
+      // No upcoming session found
       if (mounted) {
         setState(() {
           _isSessionActive = false;
+          _cachedUpcomingSession = null;
         });
       }
     }
   }
 
-  Future<void> _endSession(String sessionId)async {
-    if(_isSessionActive && !_isStartingSession) {
+  Future<void> _endSession(String sessionId) async {
+    if (_isSessionActive && !_isStartingSession) {
       setState(() {
         _isStartingSession = true;
       });
+
       final today = DateTime.now();
-      final dateString = "${today.year.toString().padLeft(4, '0')}-"
+      final dateString =
+          "${today.year.toString().padLeft(4, '0')}-"
           "${today.month.toString().padLeft(2, '0')}-"
           "${today.day.toString().padLeft(2, '0')}";
-      print("${sessionId}_$dateString");
+
+      // Close attendance session
       final success = await context.read<AttendanceProvider>().closeSession(
-          sessionId: "${sessionId}_$dateString");
-      if (mounted){
+        sessionId: "${sessionId}_$dateString",
+      );
+
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Session Ended')),
+          const SnackBar(content: Text('Session Ended. Analyzing...')),
         );
+
+        // --- PHASE 5: Post-Session Intelligence ---
+        // Fetch insights (confusion points, grasping scores)
+        await context.read<FacultyProvider>().fetchSessionInsights(sessionId);
+
+        // Show the summary dialog
+        if (mounted) _showSessionSummaryDialog();
+
         await _checkUpcomingSessionStatus();
         setState(() {
           _isStartingSession = false;
         });
       }
     }
+  }
+
+  // --- PHASE 5: Summary Dialog ---
+  void _showSessionSummaryDialog() {
+    final insights = context.read<FacultyProvider>().currentInsights;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text(
+          "Class Summary",
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: insights.isEmpty
+              ? [
+                  const Text(
+                    "No insights available.",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ]
+              : insights
+                    .map(
+                      (i) => ListTile(
+                        title: Text(
+                          i.metric,
+                          style: const TextStyle(color: Colors.white70),
+                        ),
+                        subtitle: Text(
+                          i.value,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        trailing: Icon(
+                          i.trend == "rising"
+                              ? Icons.trending_up
+                              : Icons.trending_down,
+                          color: i.trend == "rising"
+                              ? Colors.redAccent
+                              : Colors.greenAccent,
+                        ),
+                      ),
+                    )
+                    .toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Close"),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showPlaceholder(String featureName) {
@@ -152,6 +233,7 @@ class _FacultyHomeState extends State<FacultyHome>
   Widget build(BuildContext context) {
     final scheduleProvider = context.watch<ScheduleProvider>();
     final courseProvider = context.watch<CourseProvider>();
+    final facultyProvider = context.watch<FacultyProvider>(); // <--- PHASE 5
     final user = context.watch<AuthProvider>().userProfile;
     final firstName = user?['first_name'] ?? 'Faculty';
 
@@ -164,18 +246,8 @@ class _FacultyHomeState extends State<FacultyHome>
     );
     final todaysClasses = scheduleProvider.getSessionsForDate(DateTime.now());
 
-    ClassSession? upcomingSession;
-    final now = DateTime.now();
-    todaysClasses.sort(
-      (a, b) => (a.activeStartTime ?? now).compareTo(b.activeStartTime ?? now),
-    );
-    try {
-      upcomingSession = todaysClasses.firstWhere(
-        (s) => s.activeEndTime != null && s.activeEndTime!.isAfter(now),
-      );
-    } catch (e) {
-      upcomingSession = null;
-    }
+    // Use cached session to avoid UI flicker during rebuilds
+    final upcomingSession = _cachedUpcomingSession;
 
     // Define content list for animation
     final List<Widget> contentWidgets = [
@@ -298,6 +370,71 @@ class _FacultyHomeState extends State<FacultyHome>
                     ),
                   ],
                 ),
+
+                // --- PHASE 5: Pacing Recommendation Widget ---
+                if (facultyProvider.currentPacing != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color:
+                          facultyProvider.currentPacing!.action == 'SLOW_DOWN'
+                          ? Colors.orange.withOpacity(0.1)
+                          : Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color:
+                            facultyProvider.currentPacing!.action == 'SLOW_DOWN'
+                            ? Colors.orange
+                            : Colors.green,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          facultyProvider.currentPacing!.action == 'SLOW_DOWN'
+                              ? Icons.warning_amber_rounded
+                              : Icons.speed,
+                          color:
+                              facultyProvider.currentPacing!.action ==
+                                  'SLOW_DOWN'
+                              ? Colors.orange
+                              : Colors.green,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "AI Insight: ${facultyProvider.currentPacing!.action.replaceAll('_', ' ')}",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      facultyProvider.currentPacing!.action ==
+                                          'SLOW_DOWN'
+                                      ? Colors.orange
+                                      : Colors.green,
+                                ),
+                              ),
+                              Text(
+                                facultyProvider.currentPacing!.reasoning,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // ----------------------------------------------
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -305,7 +442,7 @@ class _FacultyHomeState extends State<FacultyHome>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                     ),
-                    icon: _isStartingSession 
+                    icon: _isStartingSession
                         ? const SizedBox(
                             width: 20,
                             height: 20,
@@ -319,37 +456,52 @@ class _FacultyHomeState extends State<FacultyHome>
                             color: Colors.white,
                           ),
                     label: Text(
-                      _isStartingSession ? "Processing..." : (!_isSessionActive)?"Start Class & Attendance":"End Session",
+                      _isStartingSession
+                          ? "Processing..."
+                          : (!_isSessionActive)
+                          ? "Start Class & Attendance"
+                          : "End Session",
                       style: const TextStyle(color: Colors.white),
                     ),
-                    onPressed: _isStartingSession || _isSessionActive
-                        ? () =>_endSession(upcomingSession!.id)
-                        : () async {
-                      setState(() => _isStartingSession = true);
-                      final success = await context
-                          .read<AttendanceProvider>()
-                          .startSession(
-                        courseId: upcomingSession!.courseId,
-                        classSessionId: upcomingSession!.id,
-                      );
-                      print("Attendance Started: $success");
-                      
-                      if (mounted) {
-                        await _checkUpcomingSessionStatus();
-                        setState(() {
-                         _isStartingSession = false;
-                         });
-                        if(success){
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Session Started')),
-                          );
-                        }else{
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Session Could not be Started / Already Started')),
-                          );
-                        }
-                      }
-                    }
+                    onPressed: _isStartingSession
+                        ? null // Disable button while processing
+                        : (_isSessionActive
+                              ? () => _endSession(upcomingSession!.id)
+                              : () async {
+                                  setState(() => _isStartingSession = true);
+                                  final success = await context
+                                      .read<AttendanceProvider>()
+                                      .startSession(
+                                        courseId: upcomingSession!.courseId,
+                                        classSessionId: upcomingSession!.id,
+                                      );
+
+                                  if (mounted) {
+                                    await _checkUpcomingSessionStatus();
+                                    setState(() {
+                                      _isStartingSession = false;
+                                    });
+                                    if (success) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Session Started'),
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Could not start session',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                }),
                   ),
                 ),
               ] else ...[
@@ -428,15 +580,6 @@ class _FacultyHomeState extends State<FacultyHome>
     ];
 
     return Scaffold(
-      // floatingActionButton: FloatingActionButton.extended(
-      //   backgroundColor: AppColors.primary,
-      //   onPressed: () => Navigator.push(
-      //     context,
-      //     MaterialPageRoute(builder: (_) => const CourseFormScreen()),
-      //   ),
-      //   label: const Text("New Course"),
-      //   icon: const Icon(Icons.add),
-      // ),
       body: RefreshIndicator(
         onRefresh: () async {
           _animController.reset();
@@ -615,13 +758,6 @@ class _FacultyHomeState extends State<FacultyHome>
           "${course.code} • ${course.enrolledStudents.length} Students",
           style: const TextStyle(color: AppColors.textMedium),
         ),
-        // trailing: IconButton(
-        //   icon: const Icon(Icons.edit_note, color: AppColors.primary),
-        //   onPressed: () => Navigator.push(
-        //     context,
-        //     MaterialPageRoute(builder: (_) => CourseFormScreen(course: course)),
-        //   ),
-        // ),
       ),
     );
   }

@@ -1,14 +1,18 @@
-import 'package:campus_gemini_2/core/models/session_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/course_model.dart';
+import '../../../core/models/session_model.dart';
 import '../../../providers/course_provider.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/schedule_provider.dart';
 import '../../attendance/attendance_screen.dart';
+
+// --- Phase 3 Imports ---
+import '../../analytics/widgets/wellness_battery.dart';
+import '../../analytics/learning_insights_screen.dart';
 
 class StudentHome extends StatefulWidget {
   const StudentHome({super.key});
@@ -21,7 +25,7 @@ class _StudentHomeState extends State<StudentHome>
     with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   bool _isMarkingAttendance = false;
-  bool _isLoading =true;
+  bool _isLoading = true;
   List<ClassSession>? _upcomingClasses;
 
   @override
@@ -43,36 +47,31 @@ class _StudentHomeState extends State<StudentHome>
   }
 
   Future<void> _checkUpcomingSessionStatus() async {
-    _isLoading=true;
+    _isLoading = true;
     final scheduleProvider = context.read<ScheduleProvider>();
-    final courseProvider = context.read<CourseProvider>();
 
     final now = DateTime.now();
     final todaysClasses = scheduleProvider.getSessionsForDate(now);
 
-    todaysClasses.sort((a, b) =>
-        (a.activeStartTime ?? now).compareTo(b.activeStartTime ?? now)
+    todaysClasses.sort(
+      (a, b) => (a.activeStartTime ?? now).compareTo(b.activeStartTime ?? now),
     );
 
     try {
-      _upcomingClasses = todaysClasses.where(
+      _upcomingClasses = todaysClasses
+          .where(
             (s) => s.activeEndTime != null && s.activeEndTime!.isAfter(now),
-      ).toList();
+          )
+          .toList();
       if (mounted) {
-        setState(() {
-          print(_upcomingClasses);
-          print(_upcomingClasses!.length);          //_upcomingClasses is updated
-         });
+        setState(() {});
       }
     } catch (e) {
-      // No upcoming session found; reset state if needed
       if (mounted) {
-        setState(() {
-          print("error");
-        });
+        setState(() {});
       }
     }
-    _isLoading=false;
+    _isLoading = false;
   }
 
   @override
@@ -96,11 +95,7 @@ class _StudentHomeState extends State<StudentHome>
     return AnimatedBuilder(
       animation: _animController,
       builder: (context, child) {
-        // Calculate delay based on index (stagger effect)
-        final double start = (index * 0.05).clamp(
-          0.0,
-          1.0,
-        ); // Reduced delay slightly for smoother long list
+        final double start = (index * 0.05).clamp(0.0, 1.0);
         final double end = (start + 0.4).clamp(0.0, 1.0);
 
         final curve = CurvedAnimation(
@@ -128,7 +123,6 @@ class _StudentHomeState extends State<StudentHome>
     final user = context.watch<AuthProvider>().userProfile;
     final firstName = user?['first_name'] ?? 'Student';
 
-    // 3. Define the comprehensive list of widgets
     final List<Widget> contentWidgets = [
       // --- Quick Actions ---
       _buildSectionHeader("Quick Actions"),
@@ -140,38 +134,38 @@ class _StudentHomeState extends State<StudentHome>
               onTap: _isMarkingAttendance
                   ? () {}
                   : () async {
-                setState(() => _isMarkingAttendance = true);
+                      setState(() => _isMarkingAttendance = true);
 
-                try {
-                  final courseProvider = context.read<CourseProvider>();
-                  final activeCourse = await courseProvider.identifyCurrentClass();
+                      try {
+                        final courseProvider = context.read<CourseProvider>();
+                        final activeCourse = await courseProvider
+                            .identifyCurrentClass();
 
-                  if (!mounted) return;
+                        if (!mounted) return;
 
-                  if (activeCourse == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text("No Active Sessions"),
-                        backgroundColor: AppColors.primary,
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AttendanceScreen(
-                          activeCourses: activeCourse,
-                        ),
-                      ),
-                    );
-                  }
-                } finally {
-                  if (mounted) {
-                    setState(() => _isMarkingAttendance = false);
-                  }
-                }
-              },
+                        if (activeCourse == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("No Active Sessions"),
+                              backgroundColor: AppColors.primary,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  AttendanceScreen(activeCourses: activeCourse),
+                            ),
+                          );
+                        }
+                      } finally {
+                        if (mounted) {
+                          setState(() => _isMarkingAttendance = false);
+                        }
+                      }
+                    },
               child: _buildActionBtn(
                 Icons.camera_alt_outlined,
                 "Mark Attendance",
@@ -198,14 +192,7 @@ class _StudentHomeState extends State<StudentHome>
 
       const SizedBox(height: 24),
 
-      // const Text(
-      //   "Live Status",
-      //   style: TextStyle(
-      //     color: AppColors.textDisabled,
-      //     fontSize: 12,
-      //     fontWeight: FontWeight.bold,
-      //   ),
-      // ),
+      // --- Live Status ---
       _buildSectionHeader("Live Status"),
       const SizedBox(height: 8),
 
@@ -251,12 +238,18 @@ class _StudentHomeState extends State<StudentHome>
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: (_upcomingClasses== null || _upcomingClasses!.isEmpty) ?Colors.transparent:AppColors.primary.withOpacity(0.2),
+                        color:
+                            (_upcomingClasses == null ||
+                                _upcomingClasses!.isEmpty)
+                            ? Colors.transparent
+                            : AppColors.primary.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        (_upcomingClasses== null || _upcomingClasses!.isEmpty) ? "":"ON TIME",
-                        style: TextStyle(
+                        (_upcomingClasses == null || _upcomingClasses!.isEmpty)
+                            ? ""
+                            : "ON TIME",
+                        style: const TextStyle(
                           fontSize: 10,
                           color: AppColors.primary,
                         ),
@@ -266,22 +259,27 @@ class _StudentHomeState extends State<StudentHome>
               ),
               const SizedBox(height: 12),
               if (_upcomingClasses != null && _upcomingClasses!.isNotEmpty) ...[
-                Row(children: [
-                  Text(
-                    _upcomingClasses![0].courseName,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                Row(
+                  children: [
+                    Text(
+                      _upcomingClasses![0].courseName,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  Spacer(),
-                  Text(_upcomingClasses![0].startTimeStr,style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),),
-                ],)
+                    const Spacer(),
+                    Text(
+                      _upcomingClasses![0].startTimeStr,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ] else ...[
                 const Center(
                   child: Padding(
@@ -297,9 +295,38 @@ class _StudentHomeState extends State<StudentHome>
           ),
         ),
 
+      const SizedBox(height: 24),
+
+      // --- PHASE 3: Learning Intelligence ---
+      _buildSectionHeader("Learning Intelligence"),
+      // 1. Wellness Battery
+      const WellnessBattery(),
+      const SizedBox(height: 12),
+      // 2. Navigation Button
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          icon: const Icon(Icons.insights, size: 20),
+          label: const Text("View Learning Intelligence"),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            side: const BorderSide(color: AppColors.primary),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LearningInsightsScreen()),
+            );
+          },
+        ),
+      ),
+      const SizedBox(height: 24),
 
       // --- Enrolled Courses ---
-      const SizedBox(height: 20,),
       _buildSectionHeader("Enrolled Courses"),
       Consumer<CourseProvider>(
         builder: (context, provider, _) {
@@ -464,7 +491,6 @@ class _StudentHomeState extends State<StudentHome>
     );
   }
 
-
   Widget _buildShimmerCourseList() {
     return Shimmer.fromColors(
       baseColor: AppColors.surfaceElevated,
@@ -527,18 +553,18 @@ class _StudentHomeState extends State<StudentHome>
         children: [
           isLoading
               ? SizedBox(
-            width: 32,
-            height: 32,
-            child: CircularProgressIndicator(
-              color: isDark ? AppColors.textHigh : Colors.white,
-              strokeWidth: 3,
-            ),
-          )
-              :Icon(
-            icon,
-            color: isDark ? AppColors.textHigh : Colors.white,
-            size: 32,
-          ),
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(
+                    color: isDark ? AppColors.textHigh : Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+              : Icon(
+                  icon,
+                  color: isDark ? AppColors.textHigh : Colors.white,
+                  size: 32,
+                ),
           const SizedBox(height: 8),
           Text(
             label,
@@ -639,7 +665,7 @@ class _StudentHomeState extends State<StudentHome>
         crossAxisCount: 2,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: 2.2, // Maintain the compact aspect ratio from Code 2
+        childAspectRatio: 2.2,
       ),
       itemBuilder: (context, index) {
         final opt = options[index];
@@ -682,7 +708,6 @@ class _MenuOption {
   _MenuOption(this.title, this.icon);
 }
 
-// Reusable Bouncing Button Component
 class _BouncingButton extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;

@@ -46,20 +46,39 @@ class ApiConstants {
     return "$baseUrl/api/attendance/sessions/$sid/close";
   }
   
-  // --- SCMS Phase 3: Analytics & Intelligence ---
-
-  // Topic Mastery [cite: 105]
+  // --- SCMS Phase 3: Analytics (Existing) ---
   static String topicMasteryEndpoint(String studentId) => 
       "$baseUrl/api/scms/students/$studentId/topic-mastery";
-
-  // Learning Curve [cite: 294]
   static String learningCurveEndpoint(String studentId, String topicId) => 
       "$baseUrl/api/scms/students/$studentId/topics/$topicId/learning-curve";
-
-  // Fatigue & Wellness [cite: 253, 268]
   static String fatigueEndpoint(String studentId) => 
       "$baseUrl/api/scms/students/$studentId/fatigue";
-  
   static String overloadEndpoint(String studentId) => 
       "$baseUrl/api/scms/students/$studentId/overload";
+
+  // --- SCMS Phase 4: Career & Skill Intelligence ---
+  
+  // Skill Inventory: Maps academic topics to industry skills
+  static String skillInventoryEndpoint(String studentId) => 
+      "$baseUrl/api/scms/students/$studentId/skill-inventory";
+
+  // Career Recommendations: AI-driven role matches
+  static String careerRecommendationsEndpoint(String studentId) => 
+      "$baseUrl/api/scms/students/$studentId/career-recommendations";
+
+  // Simulation Engine: Predict outcomes based on events
+  static String careerSimulationEndpoint(String studentId) => 
+      "$baseUrl/api/scms/students/$studentId/career-simulation";
+
+  // Pre-Session: Get insights before class starts (e.g. Survey results, preparedness)
+  static String preSessionInsights(String sessionId) => 
+      "$baseUrl/api/scms/sessions/$sessionId/pre-session-insights";
+
+  // Pacing: Specific AI recommendation for delivery speed
+  static String pacingRecommendation(String sessionId) => 
+      "$baseUrl/api/scms/sessions/$sessionId/pacing-recommendation";
+
+  // Post-Session: Summary of confusion, grasping, and attendance
+  static String postSessionInsights(String sessionId) => 
+      "$baseUrl/api/scms/sessions/$sessionId/post-session-insights";
 }
